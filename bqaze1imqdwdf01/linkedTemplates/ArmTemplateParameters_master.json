@@ -1,0 +1,33 @@
+{
+	"$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"value": "bqaze1imqdwdf01"
+		},
+		"LS_NTZA_GMDM_connectionString": {
+			"value": ""
+		},
+		"LS_ADLS_MQDW_properties_typeProperties_url": {
+			"value": "https://bqaze1imqdl01.dfs.core.windows.net/"
+		},
+		"LS_AKV_MQDW_properties_typeProperties_baseUrl": {
+			"value": "https://bqaze1imqdwkv01.vault.azure.net/"
+		},
+		"LS_SQL_MQDW_properties_typeProperties_connectionString_secretName": {
+			"value": "KEY-SQL-MQDW"
+		},
+		"LS_SYN_MQDW_properties_typeProperties_connectionString_secretName": {
+			"value": "KEY-SYN-MQDW"
+		},
+		"LillyNetwork_properties_typeProperties_linkedInfo_resourceId": {
+			"value": "/subscriptions/3de5bb92-ec90-4c7e-af9b-90c3ed1cae76/resourcegroups/BQAZE1IEDNARG01/providers/Microsoft.DataFactory/factories/BQAZE1IEDNADF01/integrationruntimes/LillyNetwork"
+		},
+		"containerUri": {
+			"value": ""
+		},
+		"containerSasToken": {
+			"value": ""
+		}
+	}
+}

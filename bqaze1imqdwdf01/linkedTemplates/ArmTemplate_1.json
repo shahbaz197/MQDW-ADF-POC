@@ -1,0 +1,3581 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory name",
+			"defaultValue": "bqaze1imqdwdf01"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/DS_SQL_BATCH_GETFILES')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LS_SQL_MQDW",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "MQDW"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [],
+				"typeProperties": {}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DS_SQL_Delta_Load_Date')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LS_SQL_MQDW",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "MQDW"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "TableName",
+						"type": "varchar"
+					},
+					{
+						"name": "LastLoaded",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					}
+				],
+				"typeProperties": {
+					"schema": "MQDW",
+					"table": "DeltaLoadDate"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DS_SYN_BATCH_MTR_MQDW')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LS_SYN_MQDW",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "MQDW"
+				},
+				"annotations": [],
+				"type": "AzureSqlDWTable",
+				"schema": [
+					{
+						"name": "Fclty_Cd",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Batch_Nbr",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Mtrl_Nbr",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Mtrl_Desc",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Supplier_Name1",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Orgnl_Vndr_Nbr",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Vndr_Batch_Nbr",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Brand_Name",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Load_Type",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Load_Txn_Tm",
+						"type": "nvarchar"
+					}
+				],
+				"typeProperties": {
+					"schema": "MQDWProduct",
+					"table": "VEEVA_BATCH_MTRL"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/PL_BATCH_MTR_WEB_LOOKUP')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "BRP_WEB_APP_LOOKUP..",
+				"activities": [
+					{
+						"name": "Lookup_Cleansed_Data",
+						"type": "Lookup",
+						"dependsOn": [
+							{
+								"activity": "Stored Procedure Del",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "OrcSource",
+								"storeSettings": {
+									"type": "AzureBlobFSReadSettings",
+									"recursive": true,
+									"wildcardFileName": "*.orc"
+								}
+							},
+							"dataset": {
+								"referenceName": "DS_ADLS_BATCH_MTR_SRC_INC",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"firstRowOnly": false
+						}
+					},
+					{
+						"name": "ForEach_Cleansed_Data",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Set_SessionId",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Lookup_Cleansed_Data').output.value",
+								"type": "Expression"
+							},
+							"isSequential": false,
+							"batchCount": 50,
+							"activities": [
+								{
+									"name": "Execute Pipeline_web_app",
+									"type": "ExecutePipeline",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "PL_BATCH_MTR_WEB_APP",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"val_name__v": {
+												"value": "@item().batch_nbr",
+												"type": "Expression"
+											},
+											"val_description__c": {
+												"value": "@item().mtrl_desc",
+												"type": "Expression"
+											},
+											"val_material_id__c": {
+												"value": "@item().mtrl_nbr",
+												"type": "Expression"
+											},
+											"val_brand_name__c": {
+												"value": "@item().brand_name",
+												"type": "Expression"
+											},
+											"val_supplier_batch_number__c": {
+												"value": "@item().vndr_batch_nbr",
+												"type": "Expression"
+											},
+											"val_supplier_name__c": {
+												"value": "@item().supplier_name1",
+												"type": "Expression"
+											},
+											"url": {
+												"value": "@variables('url')",
+												"type": "Expression"
+											},
+											"password": {
+												"value": "@variables('password')",
+												"type": "Expression"
+											},
+											"username": {
+												"value": "@variables('username')",
+												"type": "Expression"
+											},
+											"val_email_address": {
+												"value": "@pipeline().parameters.var_email_address",
+												"type": "Expression"
+											},
+											"val_sessionId": {
+												"value": "@variables('val_sessionId')",
+												"type": "Expression"
+											}
+										}
+									}
+								},
+								{
+									"name": "Set load_txn_tm",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "Execute Pipeline_web_app",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "val_last_loaded_txn",
+										"value": {
+											"value": "@item().load_txn_tm",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "Stored Procedure Del",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[MQDW].[delete_session_details_proc]",
+							"storedProcedureParameters": {
+								"source_name": {
+									"value": "batch_mtr",
+									"type": "String"
+								}
+							}
+						},
+						"linkedServiceName": {
+							"referenceName": "LS_SQL_MQDW",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Copy_Batch_Mtr_Session_Details",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "ForEach_Cleansed_Data",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": "SELECT [source_name]\n      ,[url]\n      ,[sessionId]\n      ,[material_id__c]\n      ,[name__v]\n      ,[description__c]\n      ,[brand_name__c]\n      ,[supplier_batch_number__c]\n      ,[supplier_name__c]\n      ,[response_status]\n      ,[data_response_status]\n      ,[data_response_desc]\n      ,[pipeline_runid]\n      ,[pipeline_name]\n      ,[load_txn_tm]\n  FROM [MQDW].[Batch_Mtr_Session_Details]",
+								"queryTimeout": "02:00:00"
+							},
+							"sink": {
+								"type": "AvroSink",
+								"storeSettings": {
+									"type": "AzureBlobFSWriteSettings"
+								},
+								"formatSettings": {
+									"type": "AvroWriteSettings",
+									"quoteAllText": true
+								}
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "DS_SQL_BATCH_GETFILES",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "DS_ADLS_BATCH_MTR_SESSION_DETAILS",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Web_ForEach_Cleansed_Data_Notification",
+						"description": "Web_ForEach_Cleansed_Data_Notification",
+						"type": "WebActivity",
+						"dependsOn": [
+							{
+								"activity": "ForEach_Cleansed_Data",
+								"dependencyConditions": [
+									"Failed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"url": {
+								"value": "https://prod-02.eastus.logic.azure.com:443/workflows/8db37bafc0ac403c86deba160b21f420/triggers/manual/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=QBVBf3euegFE_vajWM2jI4PcSNHh3JasFaokMc_Z8K4",
+								"type": "Expression"
+							},
+							"method": "POST",
+							"headers": {
+								"Content-Type": "application/json"
+							},
+							"body": {
+								"value": "{\n \"DataFactoryName\":\"@{pipeline().DataFactory}\",\n \"EmailTo\":\"@{pipeline().parameters.var_email_address}\",\n \"PipelineName\":\"@{pipeline().Pipeline}\",\n \"PipelineRunId\":\"@{pipeline().RunId}\",\n \"PipelineTime\":\"@{pipeline().TriggerTime}\",\n \"Subject\":\"Pipeline Failed: @{pipeline().Pipeline}\",\n \"ErrorMessage\":\"Batch Mtr ForEach_Cleansed_Data Failed\"\n}",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "Web_Session_Transfer_Failure_Notification",
+						"description": "Web_Session_Transfer_Failure_Notification",
+						"type": "WebActivity",
+						"dependsOn": [
+							{
+								"activity": "Copy_Batch_Mtr_Session_Details",
+								"dependencyConditions": [
+									"Failed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"url": {
+								"value": "https://prod-02.eastus.logic.azure.com:443/workflows/8db37bafc0ac403c86deba160b21f420/triggers/manual/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=QBVBf3euegFE_vajWM2jI4PcSNHh3JasFaokMc_Z8K4",
+								"type": "Expression"
+							},
+							"method": "POST",
+							"headers": {
+								"Content-Type": "application/json"
+							},
+							"body": {
+								"value": "{\n \"DataFactoryName\":\"@{pipeline().DataFactory}\",\n \"EmailTo\":\"@{pipeline().parameters.var_email_address}\",\n \"PipelineName\":\"@{pipeline().Pipeline}\",\n \"PipelineRunId\":\"@{pipeline().RunId}\",\n \"PipelineTime\":\"@{pipeline().TriggerTime}\",\n \"Subject\":\"Pipeline Failed: @{pipeline().Pipeline}\",\n \"ErrorMessage\":\"Batch Mtr Session Details Transfer Failed\"\n}",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "Web_Lookup_Veeva_Batch_Mtr_Cnt",
+						"description": "Web_ForEach_Cleansed_Data_Notification",
+						"type": "WebActivity",
+						"dependsOn": [
+							{
+								"activity": "Copy_Inc_Adls_Syn_Veeva",
+								"dependencyConditions": [
+									"Failed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"url": {
+								"value": "https://prod-02.eastus.logic.azure.com:443/workflows/8db37bafc0ac403c86deba160b21f420/triggers/manual/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=QBVBf3euegFE_vajWM2jI4PcSNHh3JasFaokMc_Z8K4",
+								"type": "Expression"
+							},
+							"method": "POST",
+							"headers": {
+								"Content-Type": "application/json"
+							},
+							"body": {
+								"value": "{\n \"DataFactoryName\":\"@{pipeline().DataFactory}\",\n \"EmailTo\":\"@{pipeline().parameters.var_email_address}\",\n \"PipelineName\":\"@{pipeline().Pipeline}\",\n \"PipelineRunId\":\"@{pipeline().RunId}\",\n \"PipelineTime\":\"@{pipeline().TriggerTime}\",\n \"Subject\":\"Pipeline Failed: @{pipeline().Pipeline}\",\n \"ErrorMessage\":\"Copy_Inc_Adls_Syn_Veeva Failed\"\n}",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "Copy_Inc_Adls_Syn_Veeva",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Stored Procedure Del batch_mtr",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "OrcSource",
+								"storeSettings": {
+									"type": "AzureBlobFSReadSettings",
+									"recursive": true,
+									"wildcardFileName": "*.orc"
+								}
+							},
+							"sink": {
+								"type": "SqlDWSink"
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "mdm_batch_dim_id",
+											"type": "String"
+										},
+										"sink": {
+											"name": "Mdm_Batch_Dim_Id",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "fclty_cd",
+											"type": "String"
+										},
+										"sink": {
+											"name": "Fclty_Cd",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "batch_nbr",
+											"type": "String"
+										},
+										"sink": {
+											"name": "Batch_Nbr",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "mtrl_nbr",
+											"type": "String"
+										},
+										"sink": {
+											"name": "Mtrl_Nbr",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "mtrl_desc",
+											"type": "String"
+										},
+										"sink": {
+											"name": "Mtrl_Desc",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "supplier_name1",
+											"type": "String"
+										},
+										"sink": {
+											"name": "Supplier_Name1",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "orgnl_vndr_nbr",
+											"type": "String"
+										},
+										"sink": {
+											"name": "Orgnl_Vndr_Nbr",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "vndr_batch_nbr",
+											"type": "String"
+										},
+										"sink": {
+											"name": "Vndr_Batch_Nbr",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "brand_name",
+											"type": "String"
+										},
+										"sink": {
+											"name": "Brand_Name",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "load_type",
+											"type": "String"
+										},
+										"sink": {
+											"name": "Load_Type",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "load_txn_tm",
+											"type": "DateTimeOffset"
+										},
+										"sink": {
+											"name": "Load_Txn_Tm",
+											"type": "String"
+										}
+									}
+								]
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "DS_ADLS_BATCH_MTR_SQLLOAD",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "DS_SYN_BATCH_MTR_MQDW",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Stored Procedure Del batch_mtr",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "ForEach_Cleansed_Data",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[MQDWProduct].[delete_veeva_batch_mtrl]",
+							"storedProcedureParameters": {
+								"source_name": {
+									"value": "batch_mtr",
+									"type": "String"
+								}
+							}
+						},
+						"linkedServiceName": {
+							"referenceName": "LS_SYN_MQDW",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Stored Procedure Delta_Batch_Mtr_API",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "ForEach_Cleansed_Data",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[MQDW].[delta_API_call_proc]",
+							"storedProcedureParameters": {
+								"last_loaded_txn": {
+									"value": {
+										"value": "@variables('val_last_loaded_txn')",
+										"type": "Expression"
+									},
+									"type": "DateTime"
+								},
+								"pipeline_load_txn_tm": {
+									"value": {
+										"value": "@pipeline().TriggerTime",
+										"type": "Expression"
+									},
+									"type": "DateTime"
+								},
+								"pipeline_name": {
+									"value": {
+										"value": "@pipeline().Pipeline",
+										"type": "Expression"
+									},
+									"type": "String"
+								},
+								"pipeline_runid": {
+									"value": {
+										"value": "@pipeline().RunId",
+										"type": "Expression"
+									},
+									"type": "String"
+								},
+								"source_name": {
+									"value": "batch_mtr",
+									"type": "String"
+								}
+							}
+						},
+						"linkedServiceName": {
+							"referenceName": "LS_SQL_MQDW",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Web Url",
+						"type": "WebActivity",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"url": {
+								"value": "https://bpaze1imqdwkv01.vault.azure.net/secrets/MQDW-BATCHMTR-URL1/?api-version=7.0",
+								"type": "Expression"
+							},
+							"method": "GET",
+							"headers": {},
+							"authentication": {
+								"type": "MSI",
+								"resource": "https://vault.azure.net"
+							}
+						}
+					},
+					{
+						"name": "Set Url",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "Web Url",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "url",
+							"value": {
+								"value": "@activity('Web Url').output.value",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "Web Password",
+						"type": "WebActivity",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"url": {
+								"value": "https://bpaze1imqdwkv01.vault.azure.net/secrets/MQDW-BATCHMTR-PASSWORD/?api-version=7.0",
+								"type": "Expression"
+							},
+							"method": "GET",
+							"headers": {},
+							"authentication": {
+								"type": "MSI",
+								"resource": "https://vault.azure.net"
+							}
+						}
+					},
+					{
+						"name": "Set Password",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "Web Password",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "password",
+							"value": {
+								"value": "@activity('Web Password').output.value",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "Web UserName",
+						"type": "WebActivity",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"url": {
+								"value": "https://bpaze1imqdwkv01.vault.azure.net/secrets/MQDW-BATCHMTR-USER/?api-version=7.0",
+								"type": "Expression"
+							},
+							"method": "GET",
+							"headers": {},
+							"authentication": {
+								"type": "MSI",
+								"resource": "https://vault.azure.net"
+							}
+						}
+					},
+					{
+						"name": "Set UserName",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "Web UserName",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "username",
+							"value": {
+								"value": "@activity('Web UserName').output.value",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "Web_Login",
+						"type": "WebActivity",
+						"dependsOn": [
+							{
+								"activity": "Lookup_Cleansed_Data",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "Set Url",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "Set Password",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "Set UserName",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"url": {
+								"value": "https://@{variables('url')}/api/v19.3/auth?username=@{variables('username')}&password=@{variables('password')}",
+								"type": "Expression"
+							},
+							"method": "POST",
+							"headers": {},
+							"body": {
+								"value": "{\"username\":\"@{variables('url')}\",\"password=\":\"@{variables('password')}\"}",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "Set_SessionId",
+						"description": "Set_SessionId",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "Web_Login",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "val_sessionId",
+							"value": {
+								"value": "@activity('Web_Login').output.sessionId",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "Web_Failure_Login_Notification",
+						"type": "WebActivity",
+						"dependsOn": [
+							{
+								"activity": "Web_Login",
+								"dependencyConditions": [
+									"Failed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"url": {
+								"value": "https://prod-02.eastus.logic.azure.com:443/workflows/8db37bafc0ac403c86deba160b21f420/triggers/manual/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=QBVBf3euegFE_vajWM2jI4PcSNHh3JasFaokMc_Z8K4",
+								"type": "Expression"
+							},
+							"method": "POST",
+							"headers": {
+								"Content-Type": "application/json"
+							},
+							"body": {
+								"value": "{\n \"DataFactoryName\":\"@{pipeline().DataFactory}\",\n \"EmailTo\":\"@{pipeline().parameters.var_email_address}\",\n \"PipelineName\":\"@{pipeline().Pipeline}\",\n \"PipelineRunId\":\"@{pipeline().RunId}\",\n \"PipelineTime\":\"@{pipeline().TriggerTime}\",\n \"Subject\":\"Pipeline Failed: @{pipeline().Pipeline}\",\n \"ErrorMessage\":\"Login Failed for @{variables('username')}\"\n}",
+								"type": "Expression"
+							}
+						}
+					}
+				],
+				"parameters": {
+					"var_email_address": {
+						"type": "string"
+					}
+				},
+				"variables": {
+					"metadata_load_time": {
+						"type": "String"
+					},
+					"inc_load_time": {
+						"type": "String"
+					},
+					"final_set": {
+						"type": "String"
+					},
+					"val_last_loaded_txn": {
+						"type": "String",
+						"defaultValue": "1900-01-01T00:00:00Z"
+					},
+					"username": {
+						"type": "String"
+					},
+					"password": {
+						"type": "String"
+					},
+					"url": {
+						"type": "String"
+					},
+					"val_sessionId": {
+						"type": "String"
+					}
+				},
+				"folder": {
+					"name": "MQDW"
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/DS_SQL_BATCH_GETFILES')]",
+				"[concat(variables('factoryId'), '/datasets/DS_SYN_BATCH_MTR_MQDW')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/PL_MCS_BRANDNAME_TO_ADL_COMMON')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "CopyData_BrandName",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "NetezzaSource",
+								"query": "SELECT DISTINCT MT.MTRL_NBR AS ITEM, CV.CHRCTRSTC_VAL_DESC AS BRAND_NAME, cast(now() as char(30)) as LOAD_DATE\nFROM GMDM_ELANCO_VIEWS.GMDM_STG_TBST_L2_MCSAD_MCS_MTRL_TYP MT \n                        JOIN GMDM_ELANCO_VIEWS.GMDM_STG_TBST_L2_MCSAD_MCS_MTRL_CLSFCTN MC ON MT.MCS_MTRL_TYP_ID = MC.MCS_MTRL_TYP_ID\n                        JOIN GMDM_ELANCO_VIEWS.GMDM_STG_TBST_L2_MCSAD_MCS_CHRCTRSTC_VAL CV ON MC.CHRCTRSTC_TXT = CV.CHRCTRSTC_TXT AND MC.CHRCTRSTC_NM = CV.CHRCTRSTC_NM \n                        JOIN GMDM_ELANCO_VIEWS.GMDM_STG_TBST_L2_MCSAD_MCS_CHRCTRSTC C ON MC.CHRCTRSTC_NM = C.CHRCTRSTC_NM\nWHERE C.CHRCTRSTC_NM = 'Z_BRAND_NAME' \n                                    AND MC.GMDM_STG_RCRD_STS_CD = 'A' \n                                    AND C.GMDM_STG_RCRD_STS_CD = 'A'\n                                    AND CV.GMDM_STG_RCRD_STS_CD = 'A'\n                                    AND MT.GMDM_STG_RCRD_STS_CD = 'A'",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AvroSink",
+								"storeSettings": {
+									"type": "AzureBlobFSWriteSettings"
+								},
+								"formatSettings": {
+									"type": "AvroWriteSettings",
+									"quoteAllText": true
+								}
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "ITEM",
+											"type": "String"
+										},
+										"sink": {
+											"name": "ITEM"
+										}
+									},
+									{
+										"source": {
+											"name": "BRAND_NAME",
+											"type": "String"
+										},
+										"sink": {
+											"name": "BRAND_NAME"
+										}
+									},
+									{
+										"source": {
+											"name": "LOAD_DATE",
+											"type": "DateTime"
+										},
+										"sink": {
+											"name": "LOAD_DATE"
+										}
+									}
+								]
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "DS_NTZA_L2_Brand_Name",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "DS_ADLS_COMMON_RAW",
+								"type": "DatasetReference",
+								"parameters": {
+									"tablename": "brand_name"
+								}
+							}
+						]
+					}
+				],
+				"folder": {
+					"name": "MQDW"
+				},
+				"annotations": []
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/PL_MCS_SUPPLER_TO_ADL_COMMON')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "PL_MCS_SUPPLER_TO_ADL_COMMON",
+				"activities": [
+					{
+						"name": "CopyData_Supplier_adl",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "ForEach_LookupOldDeltaLoadDate",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "ForEach_LookupMAXDate",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "NetezzaSource",
+								"query": {
+									"value": "SELECT DISTINCT  *\n  FROM GMDM_ELANCO_VIEWS.GMDM_STG_TBST_L2_SAP_LFA1\nWHERE GMDM_STG_INS_TMSTMP > '@{variables('LookupOldDeltaLoadDate')}' and GMDM_STG_INS_TMSTMP <='@{variables('LookupMAXDate')}'\n",
+									"type": "Expression"
+								},
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AvroSink",
+								"storeSettings": {
+									"type": "AzureBlobFSWriteSettings"
+								},
+								"formatSettings": {
+									"type": "AvroWriteSettings",
+									"quoteAllText": true
+								}
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "GMDM_STG_FACILITY_CD",
+											"type": "String"
+										},
+										"sink": {
+											"name": "GMDM_STG_FACILITY_CD"
+										}
+									},
+									{
+										"source": {
+											"name": "GMDM_STG_SRC_INST_CD",
+											"type": "String"
+										},
+										"sink": {
+											"name": "GMDM_STG_SRC_INST_CD"
+										}
+									},
+									{
+										"source": {
+											"name": "GMDM_STG_RCRD_STS_CD",
+											"type": "String"
+										},
+										"sink": {
+											"name": "GMDM_STG_RCRD_STS_CD"
+										}
+									},
+									{
+										"source": {
+											"name": "GMDM_STG_INS_TMSTMP"
+										},
+										"sink": {
+											"name": "GMDM_STG_INS_TMSTMP"
+										}
+									},
+									{
+										"source": {
+											"name": "GMDM_STG_INS_INFORMATICA_CD",
+											"type": "Decimal"
+										},
+										"sink": {
+											"name": "GMDM_STG_INS_INFORMATICA_CD"
+										}
+									},
+									{
+										"source": {
+											"name": "GMDM_STG_HST_TMSTMP",
+											"type": "DateTime"
+										},
+										"sink": {
+											"name": "GMDM_STG_HST_TMSTMP"
+										}
+									},
+									{
+										"source": {
+											"name": "GMDM_STG_HST_INFORMATICA_CD",
+											"type": "Decimal"
+										},
+										"sink": {
+											"name": "GMDM_STG_HST_INFORMATICA_CD"
+										}
+									},
+									{
+										"source": {
+											"name": "GMDM_STG_END_TMSTMP",
+											"type": "DateTime"
+										},
+										"sink": {
+											"name": "GMDM_STG_END_TMSTMP"
+										}
+									},
+									{
+										"source": {
+											"name": "GMDM_STG_END_INFORMATICA_CD",
+											"type": "Decimal"
+										},
+										"sink": {
+											"name": "GMDM_STG_END_INFORMATICA_CD"
+										}
+									},
+									{
+										"source": {
+											"name": "SAP_ID",
+											"type": "String"
+										},
+										"sink": {
+											"name": "SAP_ID"
+										}
+									},
+									{
+										"source": {
+											"name": "SUPPLIER_TYPE",
+											"type": "String"
+										},
+										"sink": {
+											"name": "SUPPLIER_TYPE"
+										}
+									},
+									{
+										"source": {
+											"name": "SUPPLIER_NAME1",
+											"type": "String"
+										},
+										"sink": {
+											"name": "SUPPLIER_NAME1"
+										}
+									},
+									{
+										"source": {
+											"name": "SUPPLIER_NAME2",
+											"type": "String"
+										},
+										"sink": {
+											"name": "SUPPLIER_NAME2"
+										}
+									},
+									{
+										"source": {
+											"name": "ADDRESS_LINE1",
+											"type": "String"
+										},
+										"sink": {
+											"name": "ADDRESS_LINE1"
+										}
+									},
+									{
+										"source": {
+											"name": "ADDRESS_LINE2",
+											"type": "String"
+										},
+										"sink": {
+											"name": "ADDRESS_LINE2"
+										}
+									},
+									{
+										"source": {
+											"name": "CITY",
+											"type": "String"
+										},
+										"sink": {
+											"name": "CITY"
+										}
+									},
+									{
+										"source": {
+											"name": "STATE_PROVINCE",
+											"type": "String"
+										},
+										"sink": {
+											"name": "STATE_PROVINCE"
+										}
+									},
+									{
+										"source": {
+											"name": "COUNTRY",
+											"type": "String"
+										},
+										"sink": {
+											"name": "COUNTRY"
+										}
+									},
+									{
+										"source": {
+											"name": "POSTAL_AREA_CD",
+											"type": "String"
+										},
+										"sink": {
+											"name": "POSTAL_AREA_CD"
+										}
+									},
+									{
+										"source": {
+											"name": "DUNS_NUMBER",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DUNS_NUMBER"
+										}
+									},
+									{
+										"source": {
+											"name": "SEARCH_TERM",
+											"type": "String"
+										},
+										"sink": {
+											"name": "SEARCH_TERM"
+										}
+									},
+									{
+										"source": {
+											"name": "SUPPLIER_STATUS",
+											"type": "String"
+										},
+										"sink": {
+											"name": "SUPPLIER_STATUS"
+										}
+									},
+									{
+										"source": {
+											"name": "RECORD_INDICATOR",
+											"type": "String"
+										},
+										"sink": {
+											"name": "RECORD_INDICATOR"
+										}
+									},
+									{
+										"source": {
+											"name": "SAD_TRANSFER_DT",
+											"type": "DateTime"
+										},
+										"sink": {
+											"name": "SAD_TRANSFER_DT"
+										}
+									}
+								]
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "DS_NTZA_TBST_L2_SAP_LFA1",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "DS_ADLS_COMMON_RAW",
+								"type": "DatasetReference",
+								"parameters": {
+									"tablename": "supplier"
+								}
+							}
+						]
+					},
+					{
+						"name": "LookupOldDeltaLoadDate",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": {
+									"value": "SELECT CONVERT(varchar, LastLoaded,20) as LastLoaded, TableName  FROM [MQDW].[DeltaLoadDate] where  tablename = 'MQDWCommon.SUPPLIER'",
+									"type": "Expression"
+								},
+								"queryTimeout": "02:00:00"
+							},
+							"dataset": {
+								"referenceName": "DS_SQL_Delta_Load_Date",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"firstRowOnly": false
+						}
+					},
+					{
+						"name": "Stored ProcedureUpdateDeltaLoadDate",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "CopyData_Supplier_adl",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[MQDW].[UPDATE_DELTA_LOAD_DATE]",
+							"storedProcedureParameters": {
+								"TableName": {
+									"value": {
+										"value": "@variables('TableName')",
+										"type": "Expression"
+									},
+									"type": "String"
+								},
+								"MaxDate": {
+									"value": {
+										"value": "@variables('LookupMAXDate')",
+										"type": "Expression"
+									},
+									"type": "Datetime"
+								},
+								"PLName": {
+									"value": {
+										"value": "PL_MCS_SUPPLIER_TO_ADL_COMMON",
+										"type": "Expression"
+									},
+									"type": "String"
+								}
+							}
+						},
+						"linkedServiceName": {
+							"referenceName": "LS_SQL_MQDW",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "LookupMAXDate",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "NetezzaSource",
+								"query": "SELECT MAX(GMDM_STG_INS_TMSTMP) as MaxDate FROM GMDM_ELANCO_VIEWS.GMDM_STG_TBST_L2_SAP_LFA1",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "DS_NTZA_MDM_Mtrl",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"firstRowOnly": false
+						}
+					},
+					{
+						"name": "ForEach_LookupOldDeltaLoadDate",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "LookupOldDeltaLoadDate",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('LookupOldDeltaLoadDate').output.value",
+								"type": "Expression"
+							},
+							"isSequential": false,
+							"batchCount": 50,
+							"activities": [
+								{
+									"name": "Set LookupOldDeltaLoadDate",
+									"type": "SetVariable",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "LookupOldDeltaLoadDate",
+										"value": {
+											"value": "@item().LastLoaded",
+											"type": "Expression"
+										}
+									}
+								},
+								{
+									"name": "Set TableName",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "Set LookupOldDeltaLoadDate",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "TableName",
+										"value": {
+											"value": "@item().TableName",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "ForEach_LookupMAXDate",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "LookupMAXDate",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('LookupMAXDate').output.value",
+								"type": "Expression"
+							},
+							"isSequential": false,
+							"batchCount": 50,
+							"activities": [
+								{
+									"name": "Set LookupMAXDate",
+									"type": "SetVariable",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "LookupMAXDate",
+										"value": {
+											"value": "@{concat(substring(item().MAXDATE,0,10),' ',substring(item().MAXDATE,11,8))}",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						}
+					}
+				],
+				"variables": {
+					"LookupMAXDate": {
+						"type": "String"
+					},
+					"TableName": {
+						"type": "String"
+					},
+					"LookupOldDeltaLoadDate": {
+						"type": "String"
+					}
+				},
+				"folder": {
+					"name": "MQDW"
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/DS_SQL_Delta_Load_Date')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/PL_MDM_BATCH_DIM_TO_ADL_PRODUCT')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "CopyData_MDM_Batch_Dim_adl",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "ForEach_LookupOldDeltaLoadDate",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "ForEach_LookupMAXDate",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "NetezzaSource",
+								"query": {
+									"value": "SELECT DISTINCT  *\n  FROM GMDM_ELANCO_VIEWS.GMDM_MDM_BATCH_DIM\nWHERE MDM_TRNSCTN_TMSTMP > '@{variables('LookupOldDeltaLoadDate')}'\nAND MDM_TRNSCTN_TMSTMP <= '@{variables('LookupMAXDate')}'",
+									"type": "Expression"
+								},
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AvroSink",
+								"storeSettings": {
+									"type": "AzureBlobFSWriteSettings"
+								},
+								"formatSettings": {
+									"type": "AvroWriteSettings",
+									"quoteAllText": true
+								}
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "MDM_BATCH_DIM_ID",
+											"type": "Int64"
+										},
+										"sink": {
+											"name": "MDM_BATCH_DIM_ID"
+										}
+									},
+									{
+										"source": {
+											"name": "BATCH_NBR",
+											"type": "String"
+										},
+										"sink": {
+											"name": "BATCH_NBR"
+										}
+									},
+									{
+										"source": {
+											"name": "MDM_PLNT_MTRL_ID",
+											"type": "Int64"
+										},
+										"sink": {
+											"name": "MDM_PLNT_MTRL_ID"
+										}
+									},
+									{
+										"source": {
+											"name": "MDM_MTRL_ID",
+											"type": "Int64"
+										},
+										"sink": {
+											"name": "MDM_MTRL_ID"
+										}
+									},
+									{
+										"source": {
+											"name": "BATCH_MFG_DT",
+											"type": "DateTime"
+										},
+										"sink": {
+											"name": "BATCH_MFG_DT"
+										}
+									},
+									{
+										"source": {
+											"name": "BATCH_EXPRTN_DT",
+											"type": "DateTime"
+										},
+										"sink": {
+											"name": "BATCH_EXPRTN_DT"
+										}
+									},
+									{
+										"source": {
+											"name": "BATCH_REEVAL_DT",
+											"type": "DateTime"
+										},
+										"sink": {
+											"name": "BATCH_REEVAL_DT"
+										}
+									},
+									{
+										"source": {
+											"name": "ORGNL_MNFCTR_CD",
+											"type": "String"
+										},
+										"sink": {
+											"name": "ORGNL_MNFCTR_CD"
+										}
+									},
+									{
+										"source": {
+											"name": "LAST_GDS_RCPT_DT",
+											"type": "DateTime"
+										},
+										"sink": {
+											"name": "LAST_GDS_RCPT_DT"
+										}
+									},
+									{
+										"source": {
+											"name": "VNDR_BATCH_NBR",
+											"type": "String"
+										},
+										"sink": {
+											"name": "VNDR_BATCH_NBR"
+										}
+									},
+									{
+										"source": {
+											"name": "VNDR_NBR",
+											"type": "String"
+										},
+										"sink": {
+											"name": "VNDR_NBR"
+										}
+									},
+									{
+										"source": {
+											"name": "FRST_GDS_RCPT_DT",
+											"type": "DateTime"
+										},
+										"sink": {
+											"name": "FRST_GDS_RCPT_DT"
+										}
+									},
+									{
+										"source": {
+											"name": "BATCH_STS_CD",
+											"type": "String"
+										},
+										"sink": {
+											"name": "BATCH_STS_CD"
+										}
+									},
+									{
+										"source": {
+											"name": "REEVLTN_RFRNC_DT",
+											"type": "DateTime"
+										},
+										"sink": {
+											"name": "REEVLTN_RFRNC_DT"
+										}
+									},
+									{
+										"source": {
+											"name": "ORGNL_VNDR_NBR",
+											"type": "String"
+										},
+										"sink": {
+											"name": "ORGNL_VNDR_NBR"
+										}
+									},
+									{
+										"source": {
+											"name": "PRNT_BATCH_NBR",
+											"type": "String"
+										},
+										"sink": {
+											"name": "PRNT_BATCH_NBR"
+										}
+									},
+									{
+										"source": {
+											"name": "ADJSTD_EXPRTN_DT",
+											"type": "DateTime"
+										},
+										"sink": {
+											"name": "ADJSTD_EXPRTN_DT"
+										}
+									},
+									{
+										"source": {
+											"name": "RSRV_SMPL_DSCRD_DT",
+											"type": "DateTime"
+										},
+										"sink": {
+											"name": "RSRV_SMPL_DSCRD_DT"
+										}
+									},
+									{
+										"source": {
+											"name": "PKGNG_STRT_DT",
+											"type": "DateTime"
+										},
+										"sink": {
+											"name": "PKGNG_STRT_DT"
+										}
+									},
+									{
+										"source": {
+											"name": "FCLTY_CD",
+											"type": "String"
+										},
+										"sink": {
+											"name": "FCLTY_CD"
+										}
+									},
+									{
+										"source": {
+											"name": "FCLTY_DESC",
+											"type": "String"
+										},
+										"sink": {
+											"name": "FCLTY_DESC"
+										}
+									},
+									{
+										"source": {
+											"name": "LIMS_FLG",
+											"type": "String"
+										},
+										"sink": {
+											"name": "LIMS_FLG"
+										}
+									},
+									{
+										"source": {
+											"name": "LIMS_LDNG_DT",
+											"type": "String"
+										},
+										"sink": {
+											"name": "LIMS_LDNG_DT"
+										}
+									},
+									{
+										"source": {
+											"name": "MDI_LDNG_DT",
+											"type": "String"
+										},
+										"sink": {
+											"name": "MDI_LDNG_DT"
+										}
+									},
+									{
+										"source": {
+											"name": "PMX_LDNG_DT",
+											"type": "String"
+										},
+										"sink": {
+											"name": "PMX_LDNG_DT"
+										}
+									},
+									{
+										"source": {
+											"name": "MDI_FLG",
+											"type": "String"
+										},
+										"sink": {
+											"name": "MDI_FLG"
+										}
+									},
+									{
+										"source": {
+											"name": "MDE_FLG",
+											"type": "String"
+										},
+										"sink": {
+											"name": "MDE_FLG"
+										}
+									},
+									{
+										"source": {
+											"name": "SRC_CD",
+											"type": "String"
+										},
+										"sink": {
+											"name": "SRC_CD"
+										}
+									},
+									{
+										"source": {
+											"name": "MDM_LOAD_ID",
+											"type": "Int64"
+										},
+										"sink": {
+											"name": "MDM_LOAD_ID"
+										}
+									},
+									{
+										"source": {
+											"name": "MDM_TRNSCTN_TMSTMP",
+											"type": "DateTime"
+										},
+										"sink": {
+											"name": "MDM_TRNSCTN_TMSTMP"
+										}
+									},
+									{
+										"source": {
+											"name": "MDM_TRNSCTN_TYP_CD",
+											"type": "String"
+										},
+										"sink": {
+											"name": "MDM_TRNSCTN_TYP_CD"
+										}
+									},
+									{
+										"source": {
+											"name": "MDM_TRNSCTN_USER_ID",
+											"type": "String"
+										},
+										"sink": {
+											"name": "MDM_TRNSCTN_USER_ID"
+										}
+									},
+									{
+										"source": {
+											"name": "CMPGN_CD",
+											"type": "String"
+										},
+										"sink": {
+											"name": "CMPGN_CD"
+										}
+									},
+									{
+										"source": {
+											"name": "MDM_PRCS_ORDR_ID",
+											"type": "Int64"
+										},
+										"sink": {
+											"name": "MDM_PRCS_ORDR_ID"
+										}
+									},
+									{
+										"source": {
+											"name": "BATCH_CRTD_DT",
+											"type": "DateTime"
+										},
+										"sink": {
+											"name": "BATCH_CRTD_DT"
+										}
+									},
+									{
+										"source": {
+											"name": "EXPRY_DT_LBL_FRMT",
+											"type": "String"
+										},
+										"sink": {
+											"name": "EXPRY_DT_LBL_FRMT"
+										}
+									},
+									{
+										"source": {
+											"name": "BATCH_MTRL_NBR",
+											"type": "String"
+										},
+										"sink": {
+											"name": "BATCH_MTRL_NBR"
+										}
+									}
+								]
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "DS_NTZA_MDM_Batch_Dim",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "DS_ADLS_PRODUCT_RAW",
+								"type": "DatasetReference",
+								"parameters": {
+									"tablename": "mdm_batch_dim"
+								}
+							}
+						]
+					},
+					{
+						"name": "LookupOldDeltaLoadDate",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": "SELECT CONVERT(varchar, LastLoaded,20) as LastLoaded, TableName  FROM [MQDW].[DeltaLoadDate] where  tablename = 'MQDWProduct.MDM_BATCH_DIM'",
+								"queryTimeout": "02:00:00"
+							},
+							"dataset": {
+								"referenceName": "DS_SQL_Delta_Load_Date",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"firstRowOnly": false
+						}
+					},
+					{
+						"name": "LookupMAXDate",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "NetezzaSource",
+								"query": "SELECT MAX(MDM_TRNSCTN_TMSTMP) as MaxDate FROM GMDM_ELANCO_VIEWS.GMDM_MDM_BATCH_DIM",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "DS_NTZA_MDM_Batch_Dim",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"firstRowOnly": false
+						}
+					},
+					{
+						"name": "ForEach_LookupOldDeltaLoadDate",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "LookupOldDeltaLoadDate",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('LookupOldDeltaLoadDate').output.value",
+								"type": "Expression"
+							},
+							"isSequential": false,
+							"batchCount": 50,
+							"activities": [
+								{
+									"name": "Set LookupOldDeltaLoadDate",
+									"type": "SetVariable",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "LookupOldDeltaLoadDate",
+										"value": {
+											"value": "@item().LastLoaded",
+											"type": "Expression"
+										}
+									}
+								},
+								{
+									"name": "Set TableName",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "Set LookupOldDeltaLoadDate",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "TableName",
+										"value": {
+											"value": "@item().TableName",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "ForEach_LookupMAXDate",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "LookupMAXDate",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('LookupMAXDate').output.value",
+								"type": "Expression"
+							},
+							"isSequential": false,
+							"batchCount": 50,
+							"activities": [
+								{
+									"name": "Set LookupMAXDate",
+									"type": "SetVariable",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "LookupMAXDate",
+										"value": {
+											"value": "@{concat(substring(item().MAXDATE,0,10),' ',substring(item().MAXDATE,11,8))}",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "Stored ProcedureUpdateDeltaLoadDate_copy1",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "CopyData_MDM_Batch_Dim_adl",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[MQDW].[UPDATE_DELTA_LOAD_DATE]",
+							"storedProcedureParameters": {
+								"TableName": {
+									"value": {
+										"value": "@variables('TableName')",
+										"type": "Expression"
+									},
+									"type": "String"
+								},
+								"MaxDate": {
+									"value": {
+										"value": "@variables('LookupMAXDate')",
+										"type": "Expression"
+									},
+									"type": "Datetime"
+								},
+								"PLName": {
+									"value": {
+										"value": "PL_MDM_BATCH_DIM_TO_ADL_PRODUCT",
+										"type": "Expression"
+									},
+									"type": "String"
+								}
+							}
+						},
+						"linkedServiceName": {
+							"referenceName": "LS_SQL_MQDW",
+							"type": "LinkedServiceReference"
+						}
+					}
+				],
+				"variables": {
+					"LookupMAXDate": {
+						"type": "String"
+					},
+					"LookupOldDeltaLoadDate": {
+						"type": "String"
+					},
+					"TableName": {
+						"type": "String"
+					}
+				},
+				"folder": {
+					"name": "MQDW"
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/DS_SQL_Delta_Load_Date')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/PL_MDM_MTRL_TO_ADL_PRODUCT')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "CopyData_MDM_Mtrl_adl",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "ForEach_LookupOldDeltaLoadDate",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "ForEach_LookupMAXDate",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "NetezzaSource",
+								"query": {
+									"value": "SELECT DISTINCT  *\n  FROM GMDM_ELANCO_VIEWS.GMDM_MDM_MTRL mat\nWHERE mat.MDM_TRNSCTN_TMSTMP > '@{variables('LookupOldDeltaLoadDate')}'\nAND mat.MDM_TRNSCTN_TMSTMP <= '@{variables('LookupMAXDate')}'",
+									"type": "Expression"
+								},
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AvroSink",
+								"storeSettings": {
+									"type": "AzureBlobFSWriteSettings"
+								},
+								"formatSettings": {
+									"type": "AvroWriteSettings",
+									"quoteAllText": true
+								}
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "MDM_MTRL_ID",
+											"type": "Int64"
+										},
+										"sink": {
+											"name": "MDM_MTRL_ID"
+										}
+									},
+									{
+										"source": {
+											"name": "MTRL_NBR",
+											"type": "String"
+										},
+										"sink": {
+											"name": "MTRL_NBR"
+										}
+									},
+									{
+										"source": {
+											"name": "MTRL_DESC",
+											"type": "String"
+										},
+										"sink": {
+											"name": "MTRL_DESC"
+										}
+									},
+									{
+										"source": {
+											"name": "MTRL_TYP_CD",
+											"type": "String"
+										},
+										"sink": {
+											"name": "MTRL_TYP_CD"
+										}
+									},
+									{
+										"source": {
+											"name": "MTRL_TYP_DESC",
+											"type": "String"
+										},
+										"sink": {
+											"name": "MTRL_TYP_DESC"
+										}
+									},
+									{
+										"source": {
+											"name": "BATCH_MGMT_FLG",
+											"type": "String"
+										},
+										"sink": {
+											"name": "BATCH_MGMT_FLG"
+										}
+									},
+									{
+										"source": {
+											"name": "FRMLTN_CD",
+											"type": "String"
+										},
+										"sink": {
+											"name": "FRMLTN_CD"
+										}
+									},
+									{
+										"source": {
+											"name": "FRMLTN_DESC",
+											"type": "String"
+										},
+										"sink": {
+											"name": "FRMLTN_DESC"
+										}
+									},
+									{
+										"source": {
+											"name": "ITEM_NUM",
+											"type": "String"
+										},
+										"sink": {
+											"name": "ITEM_NUM"
+										}
+									},
+									{
+										"source": {
+											"name": "MRP_CNTRLR_CD",
+											"type": "String"
+										},
+										"sink": {
+											"name": "MRP_CNTRLR_CD"
+										}
+									},
+									{
+										"source": {
+											"name": "PHRMA_FORM_CD",
+											"type": "String"
+										},
+										"sink": {
+											"name": "PHRMA_FORM_CD"
+										}
+									},
+									{
+										"source": {
+											"name": "PHRMA_FORM_DESC",
+											"type": "String"
+										},
+										"sink": {
+											"name": "PHRMA_FORM_DESC"
+										}
+									},
+									{
+										"source": {
+											"name": "TRNSPRTN_GRP_CD",
+											"type": "String"
+										},
+										"sink": {
+											"name": "TRNSPRTN_GRP_CD"
+										}
+									},
+									{
+										"source": {
+											"name": "TRANSPRTN_GRP_DESC",
+											"type": "String"
+										},
+										"sink": {
+											"name": "TRANSPRTN_GRP_DESC"
+										}
+									},
+									{
+										"source": {
+											"name": "SHELF_LIFE_MIN_REM_QTY_VAL",
+											"type": "Int32"
+										},
+										"sink": {
+											"name": "SHELF_LIFE_MIN_REM_QTY_VAL"
+										}
+									},
+									{
+										"source": {
+											"name": "SHELF_LIFE_STRG_PERC_VAL",
+											"type": "Decimal"
+										},
+										"sink": {
+											"name": "SHELF_LIFE_STRG_PERC_VAL"
+										}
+									},
+									{
+										"source": {
+											"name": "SHELF_LIFE_TTL_QTY_VAL",
+											"type": "Int32"
+										},
+										"sink": {
+											"name": "SHELF_LIFE_TTL_QTY_VAL"
+										}
+									},
+									{
+										"source": {
+											"name": "UOM_CD",
+											"type": "String"
+										},
+										"sink": {
+											"name": "UOM_CD"
+										}
+									},
+									{
+										"source": {
+											"name": "UOM_DESC",
+											"type": "String"
+										},
+										"sink": {
+											"name": "UOM_DESC"
+										}
+									},
+									{
+										"source": {
+											"name": "MDI_FLG",
+											"type": "String"
+										},
+										"sink": {
+											"name": "MDI_FLG"
+										}
+									},
+									{
+										"source": {
+											"name": "MDE_FLG",
+											"type": "String"
+										},
+										"sink": {
+											"name": "MDE_FLG"
+										}
+									},
+									{
+										"source": {
+											"name": "SRC_CD",
+											"type": "String"
+										},
+										"sink": {
+											"name": "SRC_CD"
+										}
+									},
+									{
+										"source": {
+											"name": "MDM_LOAD_ID",
+											"type": "Int64"
+										},
+										"sink": {
+											"name": "MDM_LOAD_ID"
+										}
+									},
+									{
+										"source": {
+											"name": "MDM_TRNSCTN_TMSTMP",
+											"type": "DateTime"
+										},
+										"sink": {
+											"name": "MDM_TRNSCTN_TMSTMP"
+										}
+									},
+									{
+										"source": {
+											"name": "MDM_TRNSCTN_USER_ID",
+											"type": "String"
+										},
+										"sink": {
+											"name": "MDM_TRNSCTN_USER_ID"
+										}
+									},
+									{
+										"source": {
+											"name": "MDM_TRNSCTN_TYP_CD",
+											"type": "String"
+										},
+										"sink": {
+											"name": "MDM_TRNSCTN_TYP_CD"
+										}
+									},
+									{
+										"source": {
+											"name": "MDM_FMLY_ITEM_MTRL_ID",
+											"type": "Int64"
+										},
+										"sink": {
+											"name": "MDM_FMLY_ITEM_MTRL_ID"
+										}
+									},
+									{
+										"source": {
+											"name": "DCN_LCM_STS_CD",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DCN_LCM_STS_CD"
+										}
+									},
+									{
+										"source": {
+											"name": "DCN_LY_MTRL_FLG",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DCN_LY_MTRL_FLG"
+										}
+									},
+									{
+										"source": {
+											"name": "MTRL_GRP_NM",
+											"type": "String"
+										},
+										"sink": {
+											"name": "MTRL_GRP_NM"
+										}
+									},
+									{
+										"source": {
+											"name": "MTRL_GRP_DESC",
+											"type": "String"
+										},
+										"sink": {
+											"name": "MTRL_GRP_DESC"
+										}
+									},
+									{
+										"source": {
+											"name": "WDTH_QTY",
+											"type": "Decimal"
+										},
+										"sink": {
+											"name": "WDTH_QTY"
+										}
+									},
+									{
+										"source": {
+											"name": "LEN_QTY",
+											"type": "Decimal"
+										},
+										"sink": {
+											"name": "LEN_QTY"
+										}
+									},
+									{
+										"source": {
+											"name": "HGT_QTY",
+											"type": "Decimal"
+										},
+										"sink": {
+											"name": "HGT_QTY"
+										}
+									}
+								]
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "DS_NTZA_MDM_Mtrl",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "DS_ADLS_PRODUCT_RAW",
+								"type": "DatasetReference",
+								"parameters": {
+									"tablename": "mdm_mtrl"
+								}
+							}
+						]
+					},
+					{
+						"name": "LookupOldDeltaLoadDate",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": {
+									"value": "SELECT CONVERT(varchar, LastLoaded,20) as LastLoaded, TableName  FROM [MQDW].[DeltaLoadDate] where  tablename = 'MQDWProduct.MDM_MTRL'",
+									"type": "Expression"
+								},
+								"queryTimeout": "02:00:00"
+							},
+							"dataset": {
+								"referenceName": "DS_SQL_Delta_Load_Date",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"firstRowOnly": false
+						}
+					},
+					{
+						"name": "LookupMAXDate",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "NetezzaSource",
+								"query": "SELECT MAX(MDM_TRNSCTN_TMSTMP) as MaxDate FROM GMDM_ELANCO_VIEWS.GMDM_MDM_MTRL",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "DS_NTZA_MDM_Mtrl",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"firstRowOnly": false
+						}
+					},
+					{
+						"name": "ForEach_LookupOldDeltaLoadDate",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "LookupOldDeltaLoadDate",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('LookupOldDeltaLoadDate').output.value",
+								"type": "Expression"
+							},
+							"isSequential": false,
+							"batchCount": 50,
+							"activities": [
+								{
+									"name": "Set LookupOldDeltaLoadDate",
+									"type": "SetVariable",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "LookupOldDeltaLoadDate",
+										"value": {
+											"value": "@item().LastLoaded",
+											"type": "Expression"
+										}
+									}
+								},
+								{
+									"name": "Set TableName",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "Set LookupOldDeltaLoadDate",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "TableName",
+										"value": {
+											"value": "@item().TableName",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "ForEach_LookupMAXDate",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "LookupMAXDate",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('LookupMAXDate').output.value",
+								"type": "Expression"
+							},
+							"isSequential": false,
+							"batchCount": 50,
+							"activities": [
+								{
+									"name": "Set LookupMAXDate",
+									"type": "SetVariable",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "LookupMAXDate",
+										"value": {
+											"value": "@{concat(substring(item().MAXDATE,0,10),' ',substring(item().MAXDATE,11,8))}",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "Stored ProcedureUpdateDeltaLoadDate",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "CopyData_MDM_Mtrl_adl",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[MQDW].[UPDATE_DELTA_LOAD_DATE]",
+							"storedProcedureParameters": {
+								"TableName": {
+									"value": {
+										"value": "@variables('TableName')",
+										"type": "Expression"
+									},
+									"type": "String"
+								},
+								"MaxDate": {
+									"value": {
+										"value": "@variables('LookupMAXDate')",
+										"type": "Expression"
+									},
+									"type": "Datetime"
+								},
+								"PLName": {
+									"value": {
+										"value": "PL_MDM_MTRL_TO_ADL_PRODUCT",
+										"type": "Expression"
+									},
+									"type": "String"
+								}
+							}
+						},
+						"linkedServiceName": {
+							"referenceName": "LS_SQL_MQDW",
+							"type": "LinkedServiceReference"
+						}
+					}
+				],
+				"variables": {
+					"LookupMAXDate": {
+						"type": "String"
+					},
+					"LookupOldDeltaLoadDate": {
+						"type": "String"
+					},
+					"TableName": {
+						"type": "String"
+					}
+				},
+				"folder": {
+					"name": "MQDW"
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/DS_SQL_Delta_Load_Date')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/PL_BATCH_MTR_WEB')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "PL_BATCH_MTR_WEB......",
+				"activities": [
+					{
+						"name": "Notebook_raw2stage_brand_name",
+						"description": "raw2stage_brand_name",
+						"type": "DatabricksNotebook",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebookPath": "/MQ - Veeva Quality Management (VVQM)/Batch Materials/Raw_Stage_Codes/raw2stage_brand_name"
+						},
+						"linkedServiceName": {
+							"referenceName": "LS_ADB_VVQM",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Notebook_raw2stage_mdm_batch_dim",
+						"description": "raw2stage_mdm_batch_dim",
+						"type": "DatabricksNotebook",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebookPath": "/MQ - Veeva Quality Management (VVQM)/Batch Materials/Raw_Stage_Codes/raw2stage_mdm_batch_dim"
+						},
+						"linkedServiceName": {
+							"referenceName": "LS_ADB_VVQM",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Notebook_raw2stage_mdm_mtrl",
+						"description": "raw2stage_mdm_mtrl",
+						"type": "DatabricksNotebook",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebookPath": "/MQ - Veeva Quality Management (VVQM)/Batch Materials/Raw_Stage_Codes/raw2stage_mdm_mtrl"
+						},
+						"linkedServiceName": {
+							"referenceName": "LS_ADB_VVQM",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Notebook_raw2stage_supplier",
+						"description": "raw2stage_supplier",
+						"type": "DatabricksNotebook",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebookPath": "/MQ - Veeva Quality Management (VVQM)/Batch Materials/Raw_Stage_Codes/raw2stage_supplier"
+						},
+						"linkedServiceName": {
+							"referenceName": "LS_ADB_VVQM",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Notebook_stg2curated_veeva_batch_mtrl",
+						"description": "stg2curated_veeva_batch_mtrl",
+						"type": "DatabricksNotebook",
+						"dependsOn": [
+							{
+								"activity": "Notebook_raw2stage_supplier",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "Notebook_raw2stage_mdm_mtrl",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "Notebook_raw2stage_mdm_batch_dim",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "Notebook_raw2stage_brand_name",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebookPath": "/MQ - Veeva Quality Management (VVQM)/Batch Materials/Raw_Stage_Codes/stg2curated_veeva_batch_mtrl"
+						},
+						"linkedServiceName": {
+							"referenceName": "LS_ADB_VVQM",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "If Condition_autoud_Inbnd_WebApp_Lookup",
+						"description": "IF condition is ok, this will call PL_AUTOUD_INBND_WEB_APP_LOOKUP",
+						"type": "IfCondition",
+						"dependsOn": [
+							{
+								"activity": "ForEach_Cleansed_Data_Metadata",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "ForEach_Cleansed_Data_source",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"expression": {
+								"value": "@equals(variables('inc_load_time'),variables('metadata_load_time'))",
+								"type": "Expression"
+							},
+							"ifFalseActivities": [
+								{
+									"name": "Set Final_ValuesNotMatching",
+									"type": "SetVariable",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "final_set",
+										"value": "0"
+									}
+								},
+								{
+									"name": "Execute_PL_BATCH_MTR_WEB_LOOKUP",
+									"type": "ExecutePipeline",
+									"dependsOn": [
+										{
+											"activity": "Set Final_ValuesNotMatching",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "PL_BATCH_MTR_WEB_LOOKUP",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"var_email_address": {
+												"value": "@pipeline().parameters.var_email_address",
+												"type": "Expression"
+											}
+										}
+									}
+								}
+							],
+							"ifTrueActivities": [
+								{
+									"name": "Set Final_ValuesMatching",
+									"type": "SetVariable",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "final_set",
+										"value": "1"
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "Lookup_Cleansed_Data",
+						"type": "Lookup",
+						"dependsOn": [
+							{
+								"activity": "Notebook_stg2curated_veeva_batch_mtrl",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "OrcSource",
+								"storeSettings": {
+									"type": "AzureBlobFSReadSettings",
+									"recursive": true,
+									"wildcardFileName": "*.orc"
+								}
+							},
+							"dataset": {
+								"referenceName": "DS_ADLS_BATCH_MTR_WATERMARK",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"firstRowOnly": false
+						}
+					},
+					{
+						"name": "Lookup_Metadata",
+						"type": "Lookup",
+						"dependsOn": [
+							{
+								"activity": "Notebook_stg2curated_veeva_batch_mtrl",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": {
+									"value": "SELECT CONVERT(varchar, last_loaded_txn,20) as val_last_loaded_txn\nFROM [MQDW].[Delta_API_Call]\nwhere [source_name] = 'batch_mtr' ",
+									"type": "Expression"
+								},
+								"queryTimeout": "02:00:00"
+							},
+							"dataset": {
+								"referenceName": "DS_SQL_BATCH_GETFILES",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"firstRowOnly": false
+						}
+					},
+					{
+						"name": "ForEach_Cleansed_Data_source",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Lookup_Cleansed_Data",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Lookup_Cleansed_Data').output.value",
+								"type": "Expression"
+							},
+							"isSequential": false,
+							"batchCount": 50,
+							"activities": [
+								{
+									"name": "Set Inc Time",
+									"type": "SetVariable",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "inc_load_time",
+										"value": {
+											"value": "@{concat(substring(item().load_txn_tm,0,10),' ',substring(item().load_txn_tm,11,8))}",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "ForEach_Cleansed_Data_Metadata",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Lookup_Metadata",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Lookup_Metadata').output.value",
+								"type": "Expression"
+							},
+							"isSequential": false,
+							"batchCount": 50,
+							"activities": [
+								{
+									"name": "Set Metadata Time",
+									"type": "SetVariable",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "metadata_load_time",
+										"value": {
+											"value": "@item().val_last_loaded_txn",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						}
+					}
+				],
+				"parameters": {
+					"var_email_address": {
+						"type": "string",
+						"defaultValue": "sneh.gaur@elanco.com"
+					}
+				},
+				"variables": {
+					"metadata_load_time": {
+						"type": "String"
+					},
+					"inc_load_time": {
+						"type": "String"
+					},
+					"final_set": {
+						"type": "String"
+					},
+					"temp_last_loaded_txn": {
+						"type": "String"
+					}
+				},
+				"folder": {
+					"name": "MQDW"
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/DS_SQL_BATCH_GETFILES')]",
+				"[concat(variables('factoryId'), '/pipelines/PL_BATCH_MTR_WEB_LOOKUP')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/TRG_PL_MCS_BRANDNAME_TO_ADL_COMMON')]",
+			"type": "Microsoft.DataFactory/factories/triggers",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"runtimeState": "Stopped",
+				"pipelines": [
+					{
+						"pipelineReference": {
+							"referenceName": "PL_MCS_BRANDNAME_TO_ADL_COMMON",
+							"type": "PipelineReference"
+						},
+						"parameters": {}
+					}
+				],
+				"type": "ScheduleTrigger",
+				"typeProperties": {
+					"recurrence": {
+						"frequency": "Day",
+						"interval": 1,
+						"startTime": "2020-03-06T07:00:00Z",
+						"timeZone": "UTC"
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/pipelines/PL_MCS_BRANDNAME_TO_ADL_COMMON')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/TRG_PL_MCS_SUPPLER_TO_ADL_COMMON')]",
+			"type": "Microsoft.DataFactory/factories/triggers",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"runtimeState": "Stopped",
+				"pipelines": [
+					{
+						"pipelineReference": {
+							"referenceName": "PL_MCS_SUPPLER_TO_ADL_COMMON",
+							"type": "PipelineReference"
+						},
+						"parameters": {}
+					}
+				],
+				"type": "ScheduleTrigger",
+				"typeProperties": {
+					"recurrence": {
+						"frequency": "Day",
+						"interval": 1,
+						"startTime": "2020-03-05T06:45:00Z",
+						"timeZone": "UTC"
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/pipelines/PL_MCS_SUPPLER_TO_ADL_COMMON')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/TRG_PL_MDM_BATCH_DIM_TO_ADL_PRODUCT')]",
+			"type": "Microsoft.DataFactory/factories/triggers",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"runtimeState": "Stopped",
+				"pipelines": [
+					{
+						"pipelineReference": {
+							"referenceName": "PL_MDM_BATCH_DIM_TO_ADL_PRODUCT",
+							"type": "PipelineReference"
+						},
+						"parameters": {}
+					}
+				],
+				"type": "ScheduleTrigger",
+				"typeProperties": {
+					"recurrence": {
+						"frequency": "Day",
+						"interval": 1,
+						"startTime": "2020-02-22T06:30:00Z",
+						"timeZone": "UTC"
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/pipelines/PL_MDM_BATCH_DIM_TO_ADL_PRODUCT')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/TRG_PL_MDM_MTRL_TO_ADL_PRODUCT')]",
+			"type": "Microsoft.DataFactory/factories/triggers",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"runtimeState": "Stopped",
+				"pipelines": [
+					{
+						"pipelineReference": {
+							"referenceName": "PL_MDM_MTRL_TO_ADL_PRODUCT",
+							"type": "PipelineReference"
+						},
+						"parameters": {}
+					}
+				],
+				"type": "ScheduleTrigger",
+				"typeProperties": {
+					"recurrence": {
+						"frequency": "Day",
+						"interval": 1,
+						"startTime": "2020-02-22T06:20:00Z",
+						"timeZone": "UTC"
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/pipelines/PL_MDM_MTRL_TO_ADL_PRODUCT')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/PL_MASTER_BATCH_MTR_RAW2WEB_RUN')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Execute Pipeline PL_MCS_BRANDNAME_TO_ADL_COMMON",
+						"type": "ExecutePipeline",
+						"dependsOn": [],
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "PL_MCS_BRANDNAME_TO_ADL_COMMON",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {}
+						}
+					},
+					{
+						"name": "Execute Pipeline PL_MCS_SUPPLER_TO_ADL_COMMON",
+						"type": "ExecutePipeline",
+						"dependsOn": [],
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "PL_MCS_SUPPLER_TO_ADL_COMMON",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {}
+						}
+					},
+					{
+						"name": "Execute Pipeline PL_MDM_BATCH_DIM_TO_ADL_PRODUCT",
+						"type": "ExecutePipeline",
+						"dependsOn": [],
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "PL_MDM_BATCH_DIM_TO_ADL_PRODUCT",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {}
+						}
+					},
+					{
+						"name": "Execute Pipeline PL_MDM_MTRL_TO_ADL_PRODUCT",
+						"type": "ExecutePipeline",
+						"dependsOn": [],
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "PL_MDM_MTRL_TO_ADL_PRODUCT",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {}
+						}
+					},
+					{
+						"name": "Execute Pipeline PL_BATCH_MTR_WEB",
+						"type": "ExecutePipeline",
+						"dependsOn": [
+							{
+								"activity": "Execute Pipeline PL_MCS_BRANDNAME_TO_ADL_COMMON",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "Execute Pipeline PL_MCS_SUPPLER_TO_ADL_COMMON",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "Execute Pipeline PL_MDM_BATCH_DIM_TO_ADL_PRODUCT",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "Execute Pipeline PL_MDM_MTRL_TO_ADL_PRODUCT",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "PL_BATCH_MTR_WEB",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {
+								"var_email_address": {
+									"value": "@pipeline().parameters.var_email_address",
+									"type": "Expression"
+								}
+							}
+						}
+					},
+					{
+						"name": "Web_Failure_Sourcong_Notification",
+						"type": "WebActivity",
+						"dependsOn": [
+							{
+								"activity": "Execute Pipeline PL_MCS_BRANDNAME_TO_ADL_COMMON",
+								"dependencyConditions": [
+									"Failed"
+								]
+							},
+							{
+								"activity": "Execute Pipeline PL_MCS_SUPPLER_TO_ADL_COMMON",
+								"dependencyConditions": [
+									"Failed"
+								]
+							},
+							{
+								"activity": "Execute Pipeline PL_MDM_BATCH_DIM_TO_ADL_PRODUCT",
+								"dependencyConditions": [
+									"Failed"
+								]
+							},
+							{
+								"activity": "Execute Pipeline PL_MDM_MTRL_TO_ADL_PRODUCT",
+								"dependencyConditions": [
+									"Failed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"url": {
+								"value": "https://prod-06.eastus.logic.azure.com:443/workflows/20b2d83527654311b8ff6ebb659a9563/triggers/manual/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=I6ZUHfsOjhzZY1J0Umk8UAKuoboQfKoEQ-LBIRyJqAg",
+								"type": "Expression"
+							},
+							"method": "POST",
+							"headers": {
+								"Content-Type": "application/json"
+							},
+							"body": {
+								"value": "{\n \"DataFactoryName\":\"@{pipeline().DataFactory}\",\n \"EmailTo\":\"@{pipeline().parameters.var_email_address}\",\n \"PipelineName\":\"@{pipeline().Pipeline}\",\n \"PipelineRunId\":\"@{pipeline().RunId}\",\n \"PipelineTime\":\"@{pipeline().TriggerTime}\",\n \"Subject\":\"Pipeline Failed: @{pipeline().Pipeline}\",\n \"ErrorMessage\":\"Sourcing Failed : Web_Failure_Sourcong_Notification\"\n}",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "Web_Failure_Login_Notification",
+						"type": "WebActivity",
+						"dependsOn": [
+							{
+								"activity": "Execute Pipeline PL_BATCH_MTR_WEB",
+								"dependencyConditions": [
+									"Failed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"url": {
+								"value": "https://prod-06.eastus.logic.azure.com:443/workflows/20b2d83527654311b8ff6ebb659a9563/triggers/manual/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=I6ZUHfsOjhzZY1J0Umk8UAKuoboQfKoEQ-LBIRyJqAg",
+								"type": "Expression"
+							},
+							"method": "POST",
+							"headers": {
+								"Content-Type": "application/json"
+							},
+							"body": {
+								"value": "{\n \"DataFactoryName\":\"@{pipeline().DataFactory}\",\n \"EmailTo\":\"@{pipeline().parameters.var_email_address}\",\n \"PipelineName\":\"@{pipeline().Pipeline}\",\n \"PipelineRunId\":\"@{pipeline().RunId}\",\n \"PipelineTime\":\"@{pipeline().TriggerTime}\",\n \"Subject\":\"Pipeline Failed: @{pipeline().Pipeline}\",\n \"ErrorMessage\":\"Failure in PL_BATCH_MTR_WEB}\"\n}",
+								"type": "Expression"
+							}
+						}
+					}
+				],
+				"parameters": {
+					"var_email_address": {
+						"type": "string",
+						"defaultValue": "sneh.gaur@elanco.com"
+					}
+				},
+				"folder": {
+					"name": "MQDW"
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/pipelines/PL_MCS_BRANDNAME_TO_ADL_COMMON')]",
+				"[concat(variables('factoryId'), '/pipelines/PL_MCS_SUPPLER_TO_ADL_COMMON')]",
+				"[concat(variables('factoryId'), '/pipelines/PL_MDM_BATCH_DIM_TO_ADL_PRODUCT')]",
+				"[concat(variables('factoryId'), '/pipelines/PL_MDM_MTRL_TO_ADL_PRODUCT')]",
+				"[concat(variables('factoryId'), '/pipelines/PL_BATCH_MTR_WEB')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/TRG_PL_MASTER_BATCH_MTR_061218')]",
+			"type": "Microsoft.DataFactory/factories/triggers",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "TRG_BATCH_MTR_6am, 12pm & 18 pm",
+				"annotations": [],
+				"runtimeState": "Stopped",
+				"pipelines": [
+					{
+						"pipelineReference": {
+							"referenceName": "PL_MASTER_BATCH_MTR_RAW2WEB_RUN",
+							"type": "PipelineReference"
+						},
+						"parameters": {}
+					}
+				],
+				"type": "ScheduleTrigger",
+				"typeProperties": {
+					"recurrence": {
+						"frequency": "Day",
+						"interval": 1,
+						"startTime": "2020-03-22T14:06:00Z",
+						"timeZone": "UTC",
+						"schedule": {
+							"minutes": [
+								0
+							],
+							"hours": [
+								6,
+								12,
+								18
+							]
+						}
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/pipelines/PL_MASTER_BATCH_MTR_RAW2WEB_RUN')]"
+			]
+		}
+	]
+}

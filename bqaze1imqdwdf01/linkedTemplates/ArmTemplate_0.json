@@ -1,0 +1,983 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory name",
+			"defaultValue": "bqaze1imqdwdf01"
+		},
+		"LS_NTZA_GMDM_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'LS_NTZA_GMDM'"
+		},
+		"LS_AKV_MQDW_properties_typeProperties_baseUrl": {
+			"type": "string",
+			"defaultValue": "https://bqaze1imqdwkv01.vault.azure.net/"
+		},
+		"LillyNetwork_properties_typeProperties_linkedInfo_resourceId": {
+			"type": "string",
+			"defaultValue": "/subscriptions/3de5bb92-ec90-4c7e-af9b-90c3ed1cae76/resourcegroups/BQAZE1IEDNARG01/providers/Microsoft.DataFactory/factories/BQAZE1IEDNADF01/integrationruntimes/LillyNetwork"
+		},
+		"LS_ADLS_MQDW_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://bqaze1imqdl01.dfs.core.windows.net/"
+		},
+		"LS_SQL_MQDW_properties_typeProperties_connectionString_secretName": {
+			"type": "string",
+			"defaultValue": "KEY-SQL-MQDW"
+		},
+		"LS_SYN_MQDW_properties_typeProperties_connectionString_secretName": {
+			"type": "string",
+			"defaultValue": "KEY-SYN-MQDW"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/LS_AKV_MQDW')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureKeyVault",
+				"typeProperties": {
+					"baseUrl": "[parameters('LS_AKV_MQDW_properties_typeProperties_baseUrl')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/LillyNetwork')]",
+			"type": "Microsoft.DataFactory/factories/integrationRuntimes",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"type": "SelfHosted",
+				"description": "Provides access to resources on the Lilly network.",
+				"typeProperties": {
+					"linkedInfo": {
+						"resourceId": "[parameters('LillyNetwork_properties_typeProperties_linkedInfo_resourceId')]",
+						"authorizationType": "Rbac"
+					}
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/LS_ADB_VVQM')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "Azure Databricks",
+				"annotations": [],
+				"type": "AzureDatabricks",
+				"typeProperties": {
+					"domain": "https://eastus.azuredatabricks.net",
+					"accessToken": {
+						"type": "AzureKeyVaultSecret",
+						"store": {
+							"referenceName": "LS_AKV_MQDW",
+							"type": "LinkedServiceReference"
+						},
+						"secretName": "ADB-VVQM-SECRET"
+					},
+					"existingClusterId": "0322-153649-prude64"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LS_AKV_MQDW')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/LS_ADLS_MQDW')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobFS",
+				"typeProperties": {
+					"url": "[parameters('LS_ADLS_MQDW_properties_typeProperties_url')]",
+					"accountKey": {
+						"type": "AzureKeyVaultSecret",
+						"store": {
+							"referenceName": "LS_AKV_MQDW",
+							"type": "LinkedServiceReference"
+						},
+						"secretName": "Elanco-MQ-NonProd-MQDW-Secret"
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LS_AKV_MQDW')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/LS_NTZA_GMDM')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "GMDM Netezza connection to prod instance\n",
+				"annotations": [],
+				"type": "Netezza",
+				"typeProperties": {
+					"connectionString": "[parameters('LS_NTZA_GMDM_connectionString')]",
+					"pwd": {
+						"type": "AzureKeyVaultSecret",
+						"store": {
+							"referenceName": "LS_AKV_MQDW",
+							"type": "LinkedServiceReference"
+						},
+						"secretName": "mqpdap01-GMDM-ELANCO-VIEWS-POWERBI-USER"
+					}
+				},
+				"connectVia": {
+					"referenceName": "LillyNetwork",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/integrationRuntimes/LillyNetwork')]",
+				"[concat(variables('factoryId'), '/linkedServices/LS_AKV_MQDW')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/LS_SQL_MQDW')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "LS_SQL_MQDW",
+				"annotations": [],
+				"type": "AzureSqlDatabase",
+				"typeProperties": {
+					"connectionString": {
+						"type": "AzureKeyVaultSecret",
+						"store": {
+							"referenceName": "LS_AKV_MQDW",
+							"type": "LinkedServiceReference"
+						},
+						"secretName": "[parameters('LS_SQL_MQDW_properties_typeProperties_connectionString_secretName')]"
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LS_AKV_MQDW')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/LS_SYN_MQDW')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureSqlDW",
+				"typeProperties": {
+					"connectionString": {
+						"type": "AzureKeyVaultSecret",
+						"store": {
+							"referenceName": "LS_AKV_MQDW",
+							"type": "LinkedServiceReference"
+						},
+						"secretName": "[parameters('LS_SYN_MQDW_properties_typeProperties_connectionString_secretName')]"
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LS_AKV_MQDW')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/PL_BATCH_MTR_WEB_APP')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "PL_BATCH_MTR_WEB_APP",
+				"activities": [
+					{
+						"name": "Set_ResponseStatus",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "Web_final_post",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "val_responseStatus",
+							"value": {
+								"value": "@activity('Web_final_post').output.responseStatus",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "ForEach_Status",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Set_ResponseStatus",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Web_final_post').output.data",
+								"type": "Expression"
+							},
+							"isSequential": true,
+							"activities": [
+								{
+									"name": "Set_data_responseStatus",
+									"type": "SetVariable",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "val_data_responseStatus",
+										"value": {
+											"value": "@item().responseStatus",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "Set_response_desc",
+						"description": "Set_response_desc",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "ForEach_Status",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "val_response_desc",
+							"value": {
+								"value": "@string(activity('Web_final_post').output.data)",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "Stored_Procedure logs",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "Set_response_desc",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[MQDW].[batch_mtr_session_details_proc]",
+							"storedProcedureParameters": {
+								"brand_name__c": {
+									"value": {
+										"value": "@pipeline().parameters.val_brand_name__c",
+										"type": "Expression"
+									},
+									"type": "String"
+								},
+								"data_response_desc": {
+									"value": {
+										"value": "@variables('val_response_desc')",
+										"type": "Expression"
+									},
+									"type": "String"
+								},
+								"data_response_status": {
+									"value": {
+										"value": "@variables('val_data_responseStatus')",
+										"type": "Expression"
+									},
+									"type": "String"
+								},
+								"description__c": {
+									"value": {
+										"value": "@pipeline().parameters.val_description__c",
+										"type": "Expression"
+									},
+									"type": "String"
+								},
+								"load_txn_tm": {
+									"value": {
+										"value": "@pipeline().TriggerTime",
+										"type": "Expression"
+									},
+									"type": "DateTime"
+								},
+								"material_id__c": {
+									"value": {
+										"value": "@pipeline().parameters.val_material_id__c",
+										"type": "Expression"
+									},
+									"type": "String"
+								},
+								"name__v": {
+									"value": {
+										"value": "@pipeline().parameters.val_name__v",
+										"type": "Expression"
+									},
+									"type": "String"
+								},
+								"pipeline_name": {
+									"value": {
+										"value": "@pipeline().Pipeline",
+										"type": "Expression"
+									},
+									"type": "String"
+								},
+								"pipeline_runid": {
+									"value": {
+										"value": "@pipeline().RunId",
+										"type": "Expression"
+									},
+									"type": "String"
+								},
+								"response_status": {
+									"value": {
+										"value": "@variables('val_responseStatus')",
+										"type": "Expression"
+									},
+									"type": "String"
+								},
+								"sessionId": {
+									"value": {
+										"value": "@pipeline().parameters.val_sessionId",
+										"type": "Expression"
+									},
+									"type": "String"
+								},
+								"source_name": {
+									"value": "batch_mtr",
+									"type": "String"
+								},
+								"supplier_batch_number__c": {
+									"value": {
+										"value": "@pipeline().parameters.val_supplier_batch_number__c",
+										"type": "Expression"
+									},
+									"type": "String"
+								},
+								"supplier_name__c": {
+									"value": {
+										"value": "@pipeline().parameters.val_supplier_name__c",
+										"type": "Expression"
+									},
+									"type": "String"
+								},
+								"url": {
+									"value": {
+										"value": "@pipeline().parameters.url",
+										"type": "Expression"
+									},
+									"type": "String"
+								}
+							}
+						},
+						"linkedServiceName": {
+							"referenceName": "LS_SQL_MQDW",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Web_ResponseCheck_Notification",
+						"type": "WebActivity",
+						"dependsOn": [
+							{
+								"activity": "Stored_Procedure logs",
+								"dependencyConditions": [
+									"Failed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"url": {
+								"value": "https://prod-02.eastus.logic.azure.com:443/workflows/8db37bafc0ac403c86deba160b21f420/triggers/manual/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=QBVBf3euegFE_vajWM2jI4PcSNHh3JasFaokMc_Z8K4",
+								"type": "Expression"
+							},
+							"method": "POST",
+							"headers": {
+								"Content-Type": "application/json"
+							},
+							"body": {
+								"value": "{\n \"DataFactoryName\":\"@{pipeline().DataFactory}\",\n \"EmailTo\":\"@{pipeline().parameters.val_email_address}\",\n \"PipelineName\":\"@{pipeline().Pipeline}\",\n \"PipelineRunId\":\"@{pipeline().RunId}\",\n \"PipelineTime\":\"@{pipeline().TriggerTime}\",\n \"Subject\":\"Pipeline Failed: @{pipeline().Pipeline}\",\n \"ErrorMessage\":\"Stored Procedure Failed in @{pipeline().parameters.username}\"\n}",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "Web_final_post",
+						"type": "WebActivity",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"url": {
+								"value": "https://@{pipeline().parameters.url}/api/v19.3/vobjects/batch__c",
+								"type": "Expression"
+							},
+							"method": "POST",
+							"headers": {
+								"Content-Type": "application/json",
+								"Authorization": {
+									"value": "@pipeline().parameters.val_sessionId",
+									"type": "Expression"
+								}
+							},
+							"body": {
+								"value": "[[{\n\"material_id__c\": \"@{pipeline().parameters.val_material_id__c}\",\n\"name__v\": \"@{pipeline().parameters.val_name__v}\",\n\"description__c\": \"@{pipeline().parameters.val_description__c}\",\n\"brand_name__c\": \"@{pipeline().parameters.val_brand_name__c}\",\n\"supplier_batch_number__c\": \"@{pipeline().parameters.val_supplier_batch_number__c}\",\n\"supplier_name__c\": \"@{pipeline().parameters.val_supplier_name__c}\"\n}]",
+								"type": "Expression"
+							}
+						}
+					}
+				],
+				"parameters": {
+					"val_name__v": {
+						"type": "string"
+					},
+					"val_description__c": {
+						"type": "string"
+					},
+					"val_material_id__c": {
+						"type": "string"
+					},
+					"val_brand_name__c": {
+						"type": "string"
+					},
+					"val_supplier_batch_number__c": {
+						"type": "string"
+					},
+					"val_supplier_name__c": {
+						"type": "string"
+					},
+					"url": {
+						"type": "string"
+					},
+					"password": {
+						"type": "string"
+					},
+					"username": {
+						"type": "string"
+					},
+					"val_email_address": {
+						"type": "string"
+					},
+					"val_sessionId": {
+						"type": "string"
+					}
+				},
+				"variables": {
+					"val_responseStatus": {
+						"type": "String"
+					},
+					"val_data_responseStatus": {
+						"type": "String"
+					},
+					"val_response_desc": {
+						"type": "String"
+					}
+				},
+				"folder": {
+					"name": "MQDW"
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LS_SQL_MQDW')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DS_ADLS_BATCH_MTR_SESSION_DETAILS')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "BATCH_MTR_SESSION_DETAILS",
+				"linkedServiceName": {
+					"referenceName": "LS_ADLS_MQDW",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "MQDW"
+				},
+				"annotations": [],
+				"type": "Avro",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"folderPath": "Veeva/Batch Materials/Control_Metadata/batch_mtr_session_details",
+						"fileSystem": "mq-mqdw"
+					}
+				},
+				"schema": {}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LS_ADLS_MQDW')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DS_ADLS_BATCH_MTR_SQLLOAD')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LS_ADLS_MQDW",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "MQDW"
+				},
+				"annotations": [],
+				"type": "Orc",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"folderPath": "Veeva/Batch Materials/Curated/veeva_batch_mtrl_sqlload",
+						"fileSystem": "mq-mqdw"
+					}
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LS_ADLS_MQDW')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DS_ADLS_BATCH_MTR_SRC_INC')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LS_ADLS_MQDW",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "MQDW"
+				},
+				"annotations": [],
+				"type": "Orc",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"folderPath": "Veeva/Batch Materials/Curated/veeva_batch_mtrl_inc",
+						"fileSystem": "mq-mqdw"
+					}
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LS_ADLS_MQDW')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DS_ADLS_BATCH_MTR_UPSERT')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LS_ADLS_MQDW",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "MQDW"
+				},
+				"annotations": [],
+				"type": "Parquet",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"folderPath": "Veeva/Batch Materials/Curated/veeva_batch_mtrl_upsert/_delta_log",
+						"fileSystem": "mq-mqdw"
+					},
+					"compressionCodec": "none"
+				},
+				"schema": [
+					{
+						"name": "mdm_batch_dim_id",
+						"type": "UTF8"
+					},
+					{
+						"name": "fclty_cd",
+						"type": "UTF8"
+					},
+					{
+						"name": "batch_nbr",
+						"type": "UTF8"
+					},
+					{
+						"name": "mtrl_nbr",
+						"type": "UTF8"
+					},
+					{
+						"name": "mtrl_desc",
+						"type": "UTF8"
+					},
+					{
+						"name": "supplier_name1",
+						"type": "UTF8"
+					},
+					{
+						"name": "orgnl_vndr_nbr",
+						"type": "UTF8"
+					},
+					{
+						"name": "vndr_batch_nbr",
+						"type": "UTF8"
+					},
+					{
+						"name": "brand_name",
+						"type": "UTF8"
+					},
+					{
+						"name": "load_type",
+						"type": "UTF8"
+					},
+					{
+						"name": "load_txn_tm",
+						"type": "INT96"
+					},
+					{
+						"name": "datepart",
+						"type": "UTF8"
+					}
+				]
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LS_ADLS_MQDW')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DS_ADLS_BATCH_MTR_WATERMARK')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LS_ADLS_MQDW",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "MQDW"
+				},
+				"annotations": [],
+				"type": "Orc",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"folderPath": "Veeva/Batch Materials/Control_Metadata/api_watermark",
+						"fileSystem": "mq-mqdw"
+					}
+				},
+				"schema": [
+					{
+						"name": "fclty_cd",
+						"type": "STRING"
+					},
+					{
+						"name": "batch_nbr",
+						"type": "STRING"
+					},
+					{
+						"name": "mtrl_nbr",
+						"type": "STRING"
+					},
+					{
+						"name": "mtrl_desc",
+						"type": "STRING"
+					},
+					{
+						"name": "supplier_name1",
+						"type": "STRING"
+					},
+					{
+						"name": "orgnl_vndr_nbr",
+						"type": "STRING"
+					},
+					{
+						"name": "vndr_batch_nbr",
+						"type": "STRING"
+					},
+					{
+						"name": "brand_name",
+						"type": "STRING"
+					},
+					{
+						"name": "load_type",
+						"type": "STRING"
+					},
+					{
+						"name": "load_txn_tm",
+						"type": "TIMESTAMP"
+					},
+					{
+						"name": "datepart",
+						"type": "STRING"
+					}
+				]
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LS_ADLS_MQDW')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DS_ADLS_COMMON_RAW')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LS_ADLS_MQDW",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"tablename": {
+						"type": "string"
+					}
+				},
+				"folder": {
+					"name": "MQDW"
+				},
+				"annotations": [],
+				"type": "Avro",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": {
+							"value": "@concat(dataset().tablename,'_',formatDateTime(utcnow(),'yyyyMMddHHmm'),'.avro')",
+							"type": "Expression"
+						},
+						"folderPath": {
+							"value": "@concat(dataset().tablename,'/datepart=',formatDateTime(utcnow(),'yyyy-MM-dd'))",
+							"type": "Expression"
+						},
+						"fileSystem": {
+							"value": "@concat('mq-mqdw/Common/Raw')",
+							"type": "Expression"
+						}
+					}
+				},
+				"schema": {}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LS_ADLS_MQDW')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DS_ADLS_COMPLAINT_RAW')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LS_ADLS_MQDW",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"tablename": {
+						"type": "string"
+					}
+				},
+				"folder": {
+					"name": "MQDW"
+				},
+				"annotations": [],
+				"type": "Avro",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": {
+							"value": "@concat(dataset().tablename,'_',formatDateTime(utcnow(),'yyyyMMddHHmm'),'.avro')",
+							"type": "Expression"
+						},
+						"folderPath": {
+							"value": "@concat(dataset().tablename,'/datepart=',formatDateTime(utcnow(),'yyyy-MM-dd'))",
+							"type": "Expression"
+						},
+						"fileSystem": {
+							"value": "@concat('mq-mqdw/Complaint/Raw')",
+							"type": "Expression"
+						}
+					}
+				},
+				"schema": {}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LS_ADLS_MQDW')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DS_ADLS_PRODUCT_RAW')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LS_ADLS_MQDW",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"tablename": {
+						"type": "string"
+					}
+				},
+				"folder": {
+					"name": "MQDW"
+				},
+				"annotations": [],
+				"type": "Avro",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": {
+							"value": "@concat(dataset().tablename,'_',formatDateTime(utcnow(),'yyyyMMddHHmm'),'.avro')",
+							"type": "Expression"
+						},
+						"folderPath": {
+							"value": "@concat(dataset().tablename,'/datepart=',formatDateTime(utcnow(),'yyyy-MM-dd'))",
+							"type": "Expression"
+						},
+						"fileSystem": {
+							"value": "@concat('mq-mqdw/Product/Raw')",
+							"type": "Expression"
+						}
+					}
+				},
+				"schema": {}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LS_ADLS_MQDW')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DS_NTZA_L2_Brand_Name')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "Brand Name",
+				"linkedServiceName": {
+					"referenceName": "LS_NTZA_GMDM",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "MQDW"
+				},
+				"annotations": [],
+				"type": "NetezzaTable",
+				"schema": [],
+				"typeProperties": {
+					"schema": "",
+					"table": ""
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LS_NTZA_GMDM')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DS_NTZA_MDM_Batch_Dim')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "MDM Batch table",
+				"linkedServiceName": {
+					"referenceName": "LS_NTZA_GMDM",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "MQDW"
+				},
+				"annotations": [],
+				"type": "NetezzaTable",
+				"schema": [],
+				"typeProperties": {
+					"schema": "GMDM_ELANCO_VIEWS",
+					"table": "GMDM_MDM_BATCH_DIM"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LS_NTZA_GMDM')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DS_NTZA_MDM_Mtrl')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "MDM Material View",
+				"linkedServiceName": {
+					"referenceName": "LS_NTZA_GMDM",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "MQDW"
+				},
+				"annotations": [],
+				"type": "NetezzaTable",
+				"schema": [],
+				"typeProperties": {
+					"schema": "GMDM_ELANCO_VIEWS",
+					"table": "GMDM_MDM_MTRL"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LS_NTZA_GMDM')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DS_NTZA_TBST_L2_SAP_LFA1')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "SAP Supplier table",
+				"linkedServiceName": {
+					"referenceName": "LS_NTZA_GMDM",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "MQDW"
+				},
+				"annotations": [],
+				"type": "NetezzaTable",
+				"schema": [],
+				"typeProperties": {
+					"schema": "GMDM_ELANCO_VIEWS",
+					"table": "GMDM_STG_TBST_L2_SAP_LFA1"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LS_NTZA_GMDM')]"
+			]
+		}
+	]
+}
