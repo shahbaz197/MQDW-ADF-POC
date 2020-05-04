@@ -1,0 +1,11 @@
+{
+	"name": "LS_AKV_MQDW",
+	"type": "Microsoft.DataFactory/factories/linkedservices",
+	"properties": {
+		"annotations": [],
+		"type": "AzureKeyVault",
+		"typeProperties": {
+			"baseUrl": "https://bqaze1imqdwkv01.vault.azure.net/"
+		}
+	}
+}

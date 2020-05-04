@@ -1,0 +1,21 @@
+{
+	"name": "DS_NTZA_L2_Brand_Name",
+	"properties": {
+		"description": "Brand Name",
+		"linkedServiceName": {
+			"referenceName": "LS_NTZA_GMDM",
+			"type": "LinkedServiceReference"
+		},
+		"folder": {
+			"name": "MQDW"
+		},
+		"annotations": [],
+		"type": "NetezzaTable",
+		"schema": [],
+		"typeProperties": {
+			"schema": "",
+			"table": ""
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

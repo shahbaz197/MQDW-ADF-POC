@@ -1,0 +1,61 @@
+{
+	"name": "DS_SYN_BATCH_MTR_MQDW",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "LS_SYN_MQDW",
+			"type": "LinkedServiceReference"
+		},
+		"folder": {
+			"name": "MQDW"
+		},
+		"annotations": [],
+		"type": "AzureSqlDWTable",
+		"schema": [
+			{
+				"name": "Fclty_Cd",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Batch_Nbr",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Mtrl_Nbr",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Mtrl_Desc",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Supplier_Name1",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Orgnl_Vndr_Nbr",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Vndr_Batch_Nbr",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Brand_Name",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Load_Type",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Load_Txn_Tm",
+				"type": "nvarchar"
+			}
+		],
+		"typeProperties": {
+			"schema": "MQDWProduct",
+			"table": "VEEVA_BATCH_MTRL"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

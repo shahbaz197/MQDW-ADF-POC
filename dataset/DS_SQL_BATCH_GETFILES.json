@@ -1,0 +1,16 @@
+{
+	"name": "DS_SQL_BATCH_GETFILES",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "LS_SQL_MQDW",
+			"type": "LinkedServiceReference"
+		},
+		"folder": {
+			"name": "MQDW"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": []
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

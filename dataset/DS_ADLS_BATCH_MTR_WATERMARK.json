@@ -1,0 +1,68 @@
+{
+	"name": "DS_ADLS_BATCH_MTR_WATERMARK",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "LS_ADLS_MQDW",
+			"type": "LinkedServiceReference"
+		},
+		"folder": {
+			"name": "MQDW"
+		},
+		"annotations": [],
+		"type": "Orc",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"folderPath": "Veeva/Batch Materials/Control_Metadata/api_watermark",
+				"fileSystem": "mq-mqdw"
+			}
+		},
+		"schema": [
+			{
+				"name": "fclty_cd",
+				"type": "STRING"
+			},
+			{
+				"name": "batch_nbr",
+				"type": "STRING"
+			},
+			{
+				"name": "mtrl_nbr",
+				"type": "STRING"
+			},
+			{
+				"name": "mtrl_desc",
+				"type": "STRING"
+			},
+			{
+				"name": "supplier_name1",
+				"type": "STRING"
+			},
+			{
+				"name": "orgnl_vndr_nbr",
+				"type": "STRING"
+			},
+			{
+				"name": "vndr_batch_nbr",
+				"type": "STRING"
+			},
+			{
+				"name": "brand_name",
+				"type": "STRING"
+			},
+			{
+				"name": "load_type",
+				"type": "STRING"
+			},
+			{
+				"name": "load_txn_tm",
+				"type": "TIMESTAMP"
+			},
+			{
+				"name": "datepart",
+				"type": "STRING"
+			}
+		]
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

@@ -1,0 +1,24 @@
+{
+	"name": "TRG_PL_MDM_MTRL_TO_ADL_PRODUCT",
+	"properties": {
+		"annotations": [],
+		"runtimeState": "Stopped",
+		"pipelines": [
+			{
+				"pipelineReference": {
+					"referenceName": "PL_MDM_MTRL_TO_ADL_PRODUCT",
+					"type": "PipelineReference"
+				}
+			}
+		],
+		"type": "ScheduleTrigger",
+		"typeProperties": {
+			"recurrence": {
+				"frequency": "Day",
+				"interval": 1,
+				"startTime": "2020-02-22T06:20:00Z",
+				"timeZone": "UTC"
+			}
+		}
+	}
+}

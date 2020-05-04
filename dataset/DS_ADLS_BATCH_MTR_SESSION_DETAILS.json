@@ -1,0 +1,23 @@
+{
+	"name": "DS_ADLS_BATCH_MTR_SESSION_DETAILS",
+	"properties": {
+		"description": "BATCH_MTR_SESSION_DETAILS",
+		"linkedServiceName": {
+			"referenceName": "LS_ADLS_MQDW",
+			"type": "LinkedServiceReference"
+		},
+		"folder": {
+			"name": "MQDW"
+		},
+		"annotations": [],
+		"type": "Avro",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"folderPath": "Veeva/Batch Materials/Control_Metadata/batch_mtr_session_details",
+				"fileSystem": "mq-mqdw"
+			}
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

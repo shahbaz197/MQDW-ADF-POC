@@ -1,0 +1,24 @@
+{
+	"name": "LS_NTZA_GMDM",
+	"type": "Microsoft.DataFactory/factories/linkedservices",
+	"properties": {
+		"description": "GMDM Netezza connection to prod instance\n",
+		"annotations": [],
+		"type": "Netezza",
+		"typeProperties": {
+			"connectionString": "Server=mqpdap01.am.lilly.com;Port=5480;Database=GMDM;UID=GMDM_ELANCO_VIEWS_POWERBI_USER;SecurityLevel=preferredUnSecured;CaCertFile=",
+			"pwd": {
+				"type": "AzureKeyVaultSecret",
+				"store": {
+					"referenceName": "LS_AKV_MQDW",
+					"type": "LinkedServiceReference"
+				},
+				"secretName": "mqpdap01-GMDM-ELANCO-VIEWS-POWERBI-USER"
+			}
+		},
+		"connectVia": {
+			"referenceName": "LillyNetwork",
+			"type": "IntegrationRuntimeReference"
+		}
+	}
+}

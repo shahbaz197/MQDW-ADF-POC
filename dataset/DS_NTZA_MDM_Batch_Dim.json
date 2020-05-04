@@ -1,0 +1,21 @@
+{
+	"name": "DS_NTZA_MDM_Batch_Dim",
+	"properties": {
+		"description": "MDM Batch table",
+		"linkedServiceName": {
+			"referenceName": "LS_NTZA_GMDM",
+			"type": "LinkedServiceReference"
+		},
+		"folder": {
+			"name": "MQDW"
+		},
+		"annotations": [],
+		"type": "NetezzaTable",
+		"schema": [],
+		"typeProperties": {
+			"schema": "GMDM_ELANCO_VIEWS",
+			"table": "GMDM_MDM_BATCH_DIM"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

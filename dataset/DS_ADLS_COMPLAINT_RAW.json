@@ -1,0 +1,37 @@
+{
+	"name": "DS_ADLS_COMPLAINT_RAW",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "LS_ADLS_MQDW",
+			"type": "LinkedServiceReference"
+		},
+		"parameters": {
+			"tablename": {
+				"type": "string"
+			}
+		},
+		"folder": {
+			"name": "MQDW"
+		},
+		"annotations": [],
+		"type": "Avro",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"fileName": {
+					"value": "@concat(dataset().tablename,'_',formatDateTime(utcnow(),'yyyyMMddHHmm'),'.avro')",
+					"type": "Expression"
+				},
+				"folderPath": {
+					"value": "@concat(dataset().tablename,'/datepart=',formatDateTime(utcnow(),'yyyy-MM-dd'))",
+					"type": "Expression"
+				},
+				"fileSystem": {
+					"value": "@concat('mq-mqdw/Complaint/Raw')",
+					"type": "Expression"
+				}
+			}
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

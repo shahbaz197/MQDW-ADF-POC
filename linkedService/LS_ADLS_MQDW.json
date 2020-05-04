@@ -1,0 +1,19 @@
+{
+	"name": "LS_ADLS_MQDW",
+	"type": "Microsoft.DataFactory/factories/linkedservices",
+	"properties": {
+		"annotations": [],
+		"type": "AzureBlobFS",
+		"typeProperties": {
+			"url": "https://bqaze1imqdl01.dfs.core.windows.net/",
+			"accountKey": {
+				"type": "AzureKeyVaultSecret",
+				"store": {
+					"referenceName": "LS_AKV_MQDW",
+					"type": "LinkedServiceReference"
+				},
+				"secretName": "Elanco-MQ-NonProd-MQDW-Secret"
+			}
+		}
+	}
+}

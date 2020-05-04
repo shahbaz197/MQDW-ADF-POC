@@ -1,0 +1,23 @@
+{
+	"name": "DS_ADLS_BATCH_MTR_SRC_INC",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "LS_ADLS_MQDW",
+			"type": "LinkedServiceReference"
+		},
+		"folder": {
+			"name": "MQDW"
+		},
+		"annotations": [],
+		"type": "Orc",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"folderPath": "Veeva/Batch Materials/Curated/veeva_batch_mtrl_inc",
+				"fileSystem": "mq-mqdw"
+			}
+		},
+		"schema": []
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

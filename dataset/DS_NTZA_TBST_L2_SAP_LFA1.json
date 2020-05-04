@@ -1,0 +1,21 @@
+{
+	"name": "DS_NTZA_TBST_L2_SAP_LFA1",
+	"properties": {
+		"description": "SAP Supplier table",
+		"linkedServiceName": {
+			"referenceName": "LS_NTZA_GMDM",
+			"type": "LinkedServiceReference"
+		},
+		"folder": {
+			"name": "MQDW"
+		},
+		"annotations": [],
+		"type": "NetezzaTable",
+		"schema": [],
+		"typeProperties": {
+			"schema": "GMDM_ELANCO_VIEWS",
+			"table": "GMDM_STG_TBST_L2_SAP_LFA1"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

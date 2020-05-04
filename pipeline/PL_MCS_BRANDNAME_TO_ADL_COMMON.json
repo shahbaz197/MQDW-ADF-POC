@@ -1,0 +1,90 @@
+{
+	"name": "PL_MCS_BRANDNAME_TO_ADL_COMMON",
+	"properties": {
+		"activities": [
+			{
+				"name": "CopyData_BrandName",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "NetezzaSource",
+						"query": "SELECT DISTINCT MT.MTRL_NBR AS ITEM, CV.CHRCTRSTC_VAL_DESC AS BRAND_NAME, cast(now() as char(30)) as LOAD_DATE\nFROM GMDM_ELANCO_VIEWS.GMDM_STG_TBST_L2_MCSAD_MCS_MTRL_TYP MT \n                        JOIN GMDM_ELANCO_VIEWS.GMDM_STG_TBST_L2_MCSAD_MCS_MTRL_CLSFCTN MC ON MT.MCS_MTRL_TYP_ID = MC.MCS_MTRL_TYP_ID\n                        JOIN GMDM_ELANCO_VIEWS.GMDM_STG_TBST_L2_MCSAD_MCS_CHRCTRSTC_VAL CV ON MC.CHRCTRSTC_TXT = CV.CHRCTRSTC_TXT AND MC.CHRCTRSTC_NM = CV.CHRCTRSTC_NM \n                        JOIN GMDM_ELANCO_VIEWS.GMDM_STG_TBST_L2_MCSAD_MCS_CHRCTRSTC C ON MC.CHRCTRSTC_NM = C.CHRCTRSTC_NM\nWHERE C.CHRCTRSTC_NM = 'Z_BRAND_NAME' \n                                    AND MC.GMDM_STG_RCRD_STS_CD = 'A' \n                                    AND C.GMDM_STG_RCRD_STS_CD = 'A'\n                                    AND CV.GMDM_STG_RCRD_STS_CD = 'A'\n                                    AND MT.GMDM_STG_RCRD_STS_CD = 'A'",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AvroSink",
+						"storeSettings": {
+							"type": "AzureBlobFSWriteSettings"
+						},
+						"formatSettings": {
+							"type": "AvroWriteSettings",
+							"quoteAllText": true
+						}
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "ITEM",
+									"type": "String"
+								},
+								"sink": {
+									"name": "ITEM"
+								}
+							},
+							{
+								"source": {
+									"name": "BRAND_NAME",
+									"type": "String"
+								},
+								"sink": {
+									"name": "BRAND_NAME"
+								}
+							},
+							{
+								"source": {
+									"name": "LOAD_DATE",
+									"type": "DateTime"
+								},
+								"sink": {
+									"name": "LOAD_DATE"
+								}
+							}
+						]
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "DS_NTZA_L2_Brand_Name",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "DS_ADLS_COMMON_RAW",
+						"type": "DatasetReference",
+						"parameters": {
+							"tablename": "brand_name"
+						}
+					}
+				]
+			}
+		],
+		"folder": {
+			"name": "MQDW"
+		},
+		"annotations": []
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

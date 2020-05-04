@@ -1,0 +1,615 @@
+{
+	"name": "PL_MDM_BATCH_DIM_TO_ADL_PRODUCT",
+	"properties": {
+		"activities": [
+			{
+				"name": "CopyData_MDM_Batch_Dim_adl",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "ForEach_LookupOldDeltaLoadDate",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "ForEach_LookupMAXDate",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "NetezzaSource",
+						"query": {
+							"value": "SELECT DISTINCT  *\n  FROM GMDM_ELANCO_VIEWS.GMDM_MDM_BATCH_DIM\nWHERE MDM_TRNSCTN_TMSTMP > '@{variables('LookupOldDeltaLoadDate')}'\nAND MDM_TRNSCTN_TMSTMP <= '@{variables('LookupMAXDate')}'",
+							"type": "Expression"
+						},
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AvroSink",
+						"storeSettings": {
+							"type": "AzureBlobFSWriteSettings"
+						},
+						"formatSettings": {
+							"type": "AvroWriteSettings",
+							"quoteAllText": true
+						}
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "MDM_BATCH_DIM_ID",
+									"type": "Int64"
+								},
+								"sink": {
+									"name": "MDM_BATCH_DIM_ID"
+								}
+							},
+							{
+								"source": {
+									"name": "BATCH_NBR",
+									"type": "String"
+								},
+								"sink": {
+									"name": "BATCH_NBR"
+								}
+							},
+							{
+								"source": {
+									"name": "MDM_PLNT_MTRL_ID",
+									"type": "Int64"
+								},
+								"sink": {
+									"name": "MDM_PLNT_MTRL_ID"
+								}
+							},
+							{
+								"source": {
+									"name": "MDM_MTRL_ID",
+									"type": "Int64"
+								},
+								"sink": {
+									"name": "MDM_MTRL_ID"
+								}
+							},
+							{
+								"source": {
+									"name": "BATCH_MFG_DT",
+									"type": "DateTime"
+								},
+								"sink": {
+									"name": "BATCH_MFG_DT"
+								}
+							},
+							{
+								"source": {
+									"name": "BATCH_EXPRTN_DT",
+									"type": "DateTime"
+								},
+								"sink": {
+									"name": "BATCH_EXPRTN_DT"
+								}
+							},
+							{
+								"source": {
+									"name": "BATCH_REEVAL_DT",
+									"type": "DateTime"
+								},
+								"sink": {
+									"name": "BATCH_REEVAL_DT"
+								}
+							},
+							{
+								"source": {
+									"name": "ORGNL_MNFCTR_CD",
+									"type": "String"
+								},
+								"sink": {
+									"name": "ORGNL_MNFCTR_CD"
+								}
+							},
+							{
+								"source": {
+									"name": "LAST_GDS_RCPT_DT",
+									"type": "DateTime"
+								},
+								"sink": {
+									"name": "LAST_GDS_RCPT_DT"
+								}
+							},
+							{
+								"source": {
+									"name": "VNDR_BATCH_NBR",
+									"type": "String"
+								},
+								"sink": {
+									"name": "VNDR_BATCH_NBR"
+								}
+							},
+							{
+								"source": {
+									"name": "VNDR_NBR",
+									"type": "String"
+								},
+								"sink": {
+									"name": "VNDR_NBR"
+								}
+							},
+							{
+								"source": {
+									"name": "FRST_GDS_RCPT_DT",
+									"type": "DateTime"
+								},
+								"sink": {
+									"name": "FRST_GDS_RCPT_DT"
+								}
+							},
+							{
+								"source": {
+									"name": "BATCH_STS_CD",
+									"type": "String"
+								},
+								"sink": {
+									"name": "BATCH_STS_CD"
+								}
+							},
+							{
+								"source": {
+									"name": "REEVLTN_RFRNC_DT",
+									"type": "DateTime"
+								},
+								"sink": {
+									"name": "REEVLTN_RFRNC_DT"
+								}
+							},
+							{
+								"source": {
+									"name": "ORGNL_VNDR_NBR",
+									"type": "String"
+								},
+								"sink": {
+									"name": "ORGNL_VNDR_NBR"
+								}
+							},
+							{
+								"source": {
+									"name": "PRNT_BATCH_NBR",
+									"type": "String"
+								},
+								"sink": {
+									"name": "PRNT_BATCH_NBR"
+								}
+							},
+							{
+								"source": {
+									"name": "ADJSTD_EXPRTN_DT",
+									"type": "DateTime"
+								},
+								"sink": {
+									"name": "ADJSTD_EXPRTN_DT"
+								}
+							},
+							{
+								"source": {
+									"name": "RSRV_SMPL_DSCRD_DT",
+									"type": "DateTime"
+								},
+								"sink": {
+									"name": "RSRV_SMPL_DSCRD_DT"
+								}
+							},
+							{
+								"source": {
+									"name": "PKGNG_STRT_DT",
+									"type": "DateTime"
+								},
+								"sink": {
+									"name": "PKGNG_STRT_DT"
+								}
+							},
+							{
+								"source": {
+									"name": "FCLTY_CD",
+									"type": "String"
+								},
+								"sink": {
+									"name": "FCLTY_CD"
+								}
+							},
+							{
+								"source": {
+									"name": "FCLTY_DESC",
+									"type": "String"
+								},
+								"sink": {
+									"name": "FCLTY_DESC"
+								}
+							},
+							{
+								"source": {
+									"name": "LIMS_FLG",
+									"type": "String"
+								},
+								"sink": {
+									"name": "LIMS_FLG"
+								}
+							},
+							{
+								"source": {
+									"name": "LIMS_LDNG_DT",
+									"type": "String"
+								},
+								"sink": {
+									"name": "LIMS_LDNG_DT"
+								}
+							},
+							{
+								"source": {
+									"name": "MDI_LDNG_DT",
+									"type": "String"
+								},
+								"sink": {
+									"name": "MDI_LDNG_DT"
+								}
+							},
+							{
+								"source": {
+									"name": "PMX_LDNG_DT",
+									"type": "String"
+								},
+								"sink": {
+									"name": "PMX_LDNG_DT"
+								}
+							},
+							{
+								"source": {
+									"name": "MDI_FLG",
+									"type": "String"
+								},
+								"sink": {
+									"name": "MDI_FLG"
+								}
+							},
+							{
+								"source": {
+									"name": "MDE_FLG",
+									"type": "String"
+								},
+								"sink": {
+									"name": "MDE_FLG"
+								}
+							},
+							{
+								"source": {
+									"name": "SRC_CD",
+									"type": "String"
+								},
+								"sink": {
+									"name": "SRC_CD"
+								}
+							},
+							{
+								"source": {
+									"name": "MDM_LOAD_ID",
+									"type": "Int64"
+								},
+								"sink": {
+									"name": "MDM_LOAD_ID"
+								}
+							},
+							{
+								"source": {
+									"name": "MDM_TRNSCTN_TMSTMP",
+									"type": "DateTime"
+								},
+								"sink": {
+									"name": "MDM_TRNSCTN_TMSTMP"
+								}
+							},
+							{
+								"source": {
+									"name": "MDM_TRNSCTN_TYP_CD",
+									"type": "String"
+								},
+								"sink": {
+									"name": "MDM_TRNSCTN_TYP_CD"
+								}
+							},
+							{
+								"source": {
+									"name": "MDM_TRNSCTN_USER_ID",
+									"type": "String"
+								},
+								"sink": {
+									"name": "MDM_TRNSCTN_USER_ID"
+								}
+							},
+							{
+								"source": {
+									"name": "CMPGN_CD",
+									"type": "String"
+								},
+								"sink": {
+									"name": "CMPGN_CD"
+								}
+							},
+							{
+								"source": {
+									"name": "MDM_PRCS_ORDR_ID",
+									"type": "Int64"
+								},
+								"sink": {
+									"name": "MDM_PRCS_ORDR_ID"
+								}
+							},
+							{
+								"source": {
+									"name": "BATCH_CRTD_DT",
+									"type": "DateTime"
+								},
+								"sink": {
+									"name": "BATCH_CRTD_DT"
+								}
+							},
+							{
+								"source": {
+									"name": "EXPRY_DT_LBL_FRMT",
+									"type": "String"
+								},
+								"sink": {
+									"name": "EXPRY_DT_LBL_FRMT"
+								}
+							},
+							{
+								"source": {
+									"name": "BATCH_MTRL_NBR",
+									"type": "String"
+								},
+								"sink": {
+									"name": "BATCH_MTRL_NBR"
+								}
+							}
+						]
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "DS_NTZA_MDM_Batch_Dim",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "DS_ADLS_PRODUCT_RAW",
+						"type": "DatasetReference",
+						"parameters": {
+							"tablename": "mdm_batch_dim"
+						}
+					}
+				]
+			},
+			{
+				"name": "LookupOldDeltaLoadDate",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "SELECT CONVERT(varchar, LastLoaded,20) as LastLoaded, TableName  FROM [MQDW].[DeltaLoadDate] where  tablename = 'MQDWProduct.MDM_BATCH_DIM'",
+						"queryTimeout": "02:00:00"
+					},
+					"dataset": {
+						"referenceName": "DS_SQL_Delta_Load_Date",
+						"type": "DatasetReference"
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "LookupMAXDate",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "NetezzaSource",
+						"query": "SELECT MAX(MDM_TRNSCTN_TMSTMP) as MaxDate FROM GMDM_ELANCO_VIEWS.GMDM_MDM_BATCH_DIM",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "DS_NTZA_MDM_Batch_Dim",
+						"type": "DatasetReference"
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "ForEach_LookupOldDeltaLoadDate",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "LookupOldDeltaLoadDate",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('LookupOldDeltaLoadDate').output.value",
+						"type": "Expression"
+					},
+					"isSequential": false,
+					"batchCount": 50,
+					"activities": [
+						{
+							"name": "Set LookupOldDeltaLoadDate",
+							"type": "SetVariable",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "LookupOldDeltaLoadDate",
+								"value": {
+									"value": "@item().LastLoaded",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "Set TableName",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "Set LookupOldDeltaLoadDate",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "TableName",
+								"value": {
+									"value": "@item().TableName",
+									"type": "Expression"
+								}
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "ForEach_LookupMAXDate",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "LookupMAXDate",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('LookupMAXDate').output.value",
+						"type": "Expression"
+					},
+					"isSequential": false,
+					"batchCount": 50,
+					"activities": [
+						{
+							"name": "Set LookupMAXDate",
+							"type": "SetVariable",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "LookupMAXDate",
+								"value": {
+									"value": "@{concat(substring(item().MAXDATE,0,10),' ',substring(item().MAXDATE,11,8))}",
+									"type": "Expression"
+								}
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "Stored ProcedureUpdateDeltaLoadDate_copy1",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "CopyData_MDM_Batch_Dim_adl",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[MQDW].[UPDATE_DELTA_LOAD_DATE]",
+					"storedProcedureParameters": {
+						"TableName": {
+							"value": {
+								"value": "@variables('TableName')",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"MaxDate": {
+							"value": {
+								"value": "@variables('LookupMAXDate')",
+								"type": "Expression"
+							},
+							"type": "Datetime"
+						},
+						"PLName": {
+							"value": {
+								"value": "PL_MDM_BATCH_DIM_TO_ADL_PRODUCT",
+								"type": "Expression"
+							},
+							"type": "String"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "LS_SQL_MQDW",
+					"type": "LinkedServiceReference"
+				}
+			}
+		],
+		"variables": {
+			"LookupMAXDate": {
+				"type": "String"
+			},
+			"LookupOldDeltaLoadDate": {
+				"type": "String"
+			},
+			"TableName": {
+				"type": "String"
+			}
+		},
+		"folder": {
+			"name": "MQDW"
+		},
+		"annotations": []
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

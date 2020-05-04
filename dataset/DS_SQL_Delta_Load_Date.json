@@ -1,0 +1,31 @@
+{
+	"name": "DS_SQL_Delta_Load_Date",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "LS_SQL_MQDW",
+			"type": "LinkedServiceReference"
+		},
+		"folder": {
+			"name": "MQDW"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "TableName",
+				"type": "varchar"
+			},
+			{
+				"name": "LastLoaded",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			}
+		],
+		"typeProperties": {
+			"schema": "MQDW",
+			"table": "DeltaLoadDate"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

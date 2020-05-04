@@ -1,0 +1,200 @@
+{
+	"name": "PL_MASTER_BATCH_MTR_RAW2WEB_RUN",
+	"properties": {
+		"activities": [
+			{
+				"name": "Execute Pipeline PL_MCS_BRANDNAME_TO_ADL_COMMON",
+				"type": "ExecutePipeline",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "PL_MCS_BRANDNAME_TO_ADL_COMMON",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true
+				}
+			},
+			{
+				"name": "Execute Pipeline PL_MCS_SUPPLER_TO_ADL_COMMON",
+				"type": "ExecutePipeline",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "PL_MCS_SUPPLER_TO_ADL_COMMON",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true
+				}
+			},
+			{
+				"name": "Execute Pipeline PL_MDM_BATCH_DIM_TO_ADL_PRODUCT",
+				"type": "ExecutePipeline",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "PL_MDM_BATCH_DIM_TO_ADL_PRODUCT",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true
+				}
+			},
+			{
+				"name": "Execute Pipeline PL_MDM_MTRL_TO_ADL_PRODUCT",
+				"type": "ExecutePipeline",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "PL_MDM_MTRL_TO_ADL_PRODUCT",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true
+				}
+			},
+			{
+				"name": "Execute Pipeline PL_BATCH_MTR_WEB",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "Execute Pipeline PL_MCS_BRANDNAME_TO_ADL_COMMON",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "Execute Pipeline PL_MCS_SUPPLER_TO_ADL_COMMON",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "Execute Pipeline PL_MDM_BATCH_DIM_TO_ADL_PRODUCT",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "Execute Pipeline PL_MDM_MTRL_TO_ADL_PRODUCT",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "PL_BATCH_MTR_WEB",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"var_email_address": {
+							"value": "@pipeline().parameters.var_email_address",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "Web_Failure_Sourcong_Notification",
+				"type": "WebActivity",
+				"dependsOn": [
+					{
+						"activity": "Execute Pipeline PL_MCS_BRANDNAME_TO_ADL_COMMON",
+						"dependencyConditions": [
+							"Failed"
+						]
+					},
+					{
+						"activity": "Execute Pipeline PL_MCS_SUPPLER_TO_ADL_COMMON",
+						"dependencyConditions": [
+							"Failed"
+						]
+					},
+					{
+						"activity": "Execute Pipeline PL_MDM_BATCH_DIM_TO_ADL_PRODUCT",
+						"dependencyConditions": [
+							"Failed"
+						]
+					},
+					{
+						"activity": "Execute Pipeline PL_MDM_MTRL_TO_ADL_PRODUCT",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"url": {
+						"value": "https://prod-06.eastus.logic.azure.com:443/workflows/20b2d83527654311b8ff6ebb659a9563/triggers/manual/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=I6ZUHfsOjhzZY1J0Umk8UAKuoboQfKoEQ-LBIRyJqAg",
+						"type": "Expression"
+					},
+					"method": "POST",
+					"headers": {
+						"Content-Type": "application/json"
+					},
+					"body": {
+						"value": "{\n \"DataFactoryName\":\"@{pipeline().DataFactory}\",\n \"EmailTo\":\"@{pipeline().parameters.var_email_address}\",\n \"PipelineName\":\"@{pipeline().Pipeline}\",\n \"PipelineRunId\":\"@{pipeline().RunId}\",\n \"PipelineTime\":\"@{pipeline().TriggerTime}\",\n \"Subject\":\"Pipeline Failed: @{pipeline().Pipeline}\",\n \"ErrorMessage\":\"Sourcing Failed : Web_Failure_Sourcong_Notification\"\n}",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Web_Failure_Login_Notification",
+				"type": "WebActivity",
+				"dependsOn": [
+					{
+						"activity": "Execute Pipeline PL_BATCH_MTR_WEB",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"url": {
+						"value": "https://prod-06.eastus.logic.azure.com:443/workflows/20b2d83527654311b8ff6ebb659a9563/triggers/manual/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=I6ZUHfsOjhzZY1J0Umk8UAKuoboQfKoEQ-LBIRyJqAg",
+						"type": "Expression"
+					},
+					"method": "POST",
+					"headers": {
+						"Content-Type": "application/json"
+					},
+					"body": {
+						"value": "{\n \"DataFactoryName\":\"@{pipeline().DataFactory}\",\n \"EmailTo\":\"@{pipeline().parameters.var_email_address}\",\n \"PipelineName\":\"@{pipeline().Pipeline}\",\n \"PipelineRunId\":\"@{pipeline().RunId}\",\n \"PipelineTime\":\"@{pipeline().TriggerTime}\",\n \"Subject\":\"Pipeline Failed: @{pipeline().Pipeline}\",\n \"ErrorMessage\":\"Failure in PL_BATCH_MTR_WEB}\"\n}",
+						"type": "Expression"
+					}
+				}
+			}
+		],
+		"parameters": {
+			"var_email_address": {
+				"type": "string",
+				"defaultValue": "sneh.gaur@elanco.com"
+			}
+		},
+		"folder": {
+			"name": "MQDW"
+		},
+		"annotations": []
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

@@ -1,0 +1,21 @@
+{
+	"name": "LS_ADB_VVQM",
+	"type": "Microsoft.DataFactory/factories/linkedservices",
+	"properties": {
+		"description": "Azure Databricks",
+		"annotations": [],
+		"type": "AzureDatabricks",
+		"typeProperties": {
+			"domain": "https://eastus.azuredatabricks.net",
+			"accessToken": {
+				"type": "AzureKeyVaultSecret",
+				"store": {
+					"referenceName": "LS_AKV_MQDW",
+					"type": "LinkedServiceReference"
+				},
+				"secretName": "ADB-VVQM-SECRET"
+			},
+			"existingClusterId": "0322-153649-prude64"
+		}
+	}
+}

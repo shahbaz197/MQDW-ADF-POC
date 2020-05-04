@@ -1,0 +1,21 @@
+{
+	"name": "DS_NTZA_MDM_Mtrl",
+	"properties": {
+		"description": "MDM Material View",
+		"linkedServiceName": {
+			"referenceName": "LS_NTZA_GMDM",
+			"type": "LinkedServiceReference"
+		},
+		"folder": {
+			"name": "MQDW"
+		},
+		"annotations": [],
+		"type": "NetezzaTable",
+		"schema": [],
+		"typeProperties": {
+			"schema": "GMDM_ELANCO_VIEWS",
+			"table": "GMDM_MDM_MTRL"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

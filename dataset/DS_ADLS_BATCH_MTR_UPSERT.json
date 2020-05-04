@@ -1,0 +1,73 @@
+{
+	"name": "DS_ADLS_BATCH_MTR_UPSERT",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "LS_ADLS_MQDW",
+			"type": "LinkedServiceReference"
+		},
+		"folder": {
+			"name": "MQDW"
+		},
+		"annotations": [],
+		"type": "Parquet",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"folderPath": "Veeva/Batch Materials/Curated/veeva_batch_mtrl_upsert/_delta_log",
+				"fileSystem": "mq-mqdw"
+			},
+			"compressionCodec": "none"
+		},
+		"schema": [
+			{
+				"name": "mdm_batch_dim_id",
+				"type": "UTF8"
+			},
+			{
+				"name": "fclty_cd",
+				"type": "UTF8"
+			},
+			{
+				"name": "batch_nbr",
+				"type": "UTF8"
+			},
+			{
+				"name": "mtrl_nbr",
+				"type": "UTF8"
+			},
+			{
+				"name": "mtrl_desc",
+				"type": "UTF8"
+			},
+			{
+				"name": "supplier_name1",
+				"type": "UTF8"
+			},
+			{
+				"name": "orgnl_vndr_nbr",
+				"type": "UTF8"
+			},
+			{
+				"name": "vndr_batch_nbr",
+				"type": "UTF8"
+			},
+			{
+				"name": "brand_name",
+				"type": "UTF8"
+			},
+			{
+				"name": "load_type",
+				"type": "UTF8"
+			},
+			{
+				"name": "load_txn_tm",
+				"type": "INT96"
+			},
+			{
+				"name": "datepart",
+				"type": "UTF8"
+			}
+		]
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

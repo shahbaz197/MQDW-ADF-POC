@@ -1,0 +1,331 @@
+{
+	"name": "PL_BATCH_MTR_WEB_APP",
+	"properties": {
+		"description": "PL_BATCH_MTR_WEB_APP",
+		"activities": [
+			{
+				"name": "Set_ResponseStatus",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Web_final_post",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "val_responseStatus",
+					"value": {
+						"value": "@activity('Web_final_post').output.responseStatus",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "ForEach_Status",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "Set_ResponseStatus",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('Web_final_post').output.data",
+						"type": "Expression"
+					},
+					"isSequential": true,
+					"activities": [
+						{
+							"name": "Set_data_responseStatus",
+							"type": "SetVariable",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "val_data_responseStatus",
+								"value": {
+									"value": "@item().responseStatus",
+									"type": "Expression"
+								}
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "Set_response_desc",
+				"description": "Set_response_desc",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "ForEach_Status",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "val_response_desc",
+					"value": {
+						"value": "@string(activity('Web_final_post').output.data)",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Stored_Procedure logs",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "Set_response_desc",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[MQDW].[batch_mtr_session_details_proc]",
+					"storedProcedureParameters": {
+						"brand_name__c": {
+							"value": {
+								"value": "@pipeline().parameters.val_brand_name__c",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"data_response_desc": {
+							"value": {
+								"value": "@variables('val_response_desc')",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"data_response_status": {
+							"value": {
+								"value": "@variables('val_data_responseStatus')",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"description__c": {
+							"value": {
+								"value": "@pipeline().parameters.val_description__c",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"load_txn_tm": {
+							"value": {
+								"value": "@pipeline().TriggerTime",
+								"type": "Expression"
+							},
+							"type": "DateTime"
+						},
+						"material_id__c": {
+							"value": {
+								"value": "@pipeline().parameters.val_material_id__c",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"name__v": {
+							"value": {
+								"value": "@pipeline().parameters.val_name__v",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"pipeline_name": {
+							"value": {
+								"value": "@pipeline().Pipeline",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"pipeline_runid": {
+							"value": {
+								"value": "@pipeline().RunId",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"response_status": {
+							"value": {
+								"value": "@variables('val_responseStatus')",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"sessionId": {
+							"value": {
+								"value": "@pipeline().parameters.val_sessionId",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"source_name": {
+							"value": "batch_mtr",
+							"type": "String"
+						},
+						"supplier_batch_number__c": {
+							"value": {
+								"value": "@pipeline().parameters.val_supplier_batch_number__c",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"supplier_name__c": {
+							"value": {
+								"value": "@pipeline().parameters.val_supplier_name__c",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"url": {
+							"value": {
+								"value": "@pipeline().parameters.url",
+								"type": "Expression"
+							},
+							"type": "String"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "LS_SQL_MQDW",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Web_ResponseCheck_Notification",
+				"type": "WebActivity",
+				"dependsOn": [
+					{
+						"activity": "Stored_Procedure logs",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"url": {
+						"value": "https://prod-02.eastus.logic.azure.com:443/workflows/8db37bafc0ac403c86deba160b21f420/triggers/manual/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=QBVBf3euegFE_vajWM2jI4PcSNHh3JasFaokMc_Z8K4",
+						"type": "Expression"
+					},
+					"method": "POST",
+					"headers": {
+						"Content-Type": "application/json"
+					},
+					"body": {
+						"value": "{\n \"DataFactoryName\":\"@{pipeline().DataFactory}\",\n \"EmailTo\":\"@{pipeline().parameters.val_email_address}\",\n \"PipelineName\":\"@{pipeline().Pipeline}\",\n \"PipelineRunId\":\"@{pipeline().RunId}\",\n \"PipelineTime\":\"@{pipeline().TriggerTime}\",\n \"Subject\":\"Pipeline Failed: @{pipeline().Pipeline}\",\n \"ErrorMessage\":\"Stored Procedure Failed in @{pipeline().parameters.username}\"\n}",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Web_final_post",
+				"type": "WebActivity",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"url": {
+						"value": "https://@{pipeline().parameters.url}/api/v19.3/vobjects/batch__c",
+						"type": "Expression"
+					},
+					"method": "POST",
+					"headers": {
+						"Content-Type": "application/json",
+						"Authorization": {
+							"value": "@pipeline().parameters.val_sessionId",
+							"type": "Expression"
+						}
+					},
+					"body": {
+						"value": "[{\n\"material_id__c\": \"@{pipeline().parameters.val_material_id__c}\",\n\"name__v\": \"@{pipeline().parameters.val_name__v}\",\n\"description__c\": \"@{pipeline().parameters.val_description__c}\",\n\"brand_name__c\": \"@{pipeline().parameters.val_brand_name__c}\",\n\"supplier_batch_number__c\": \"@{pipeline().parameters.val_supplier_batch_number__c}\",\n\"supplier_name__c\": \"@{pipeline().parameters.val_supplier_name__c}\"\n}]",
+						"type": "Expression"
+					}
+				}
+			}
+		],
+		"parameters": {
+			"val_name__v": {
+				"type": "string"
+			},
+			"val_description__c": {
+				"type": "string"
+			},
+			"val_material_id__c": {
+				"type": "string"
+			},
+			"val_brand_name__c": {
+				"type": "string"
+			},
+			"val_supplier_batch_number__c": {
+				"type": "string"
+			},
+			"val_supplier_name__c": {
+				"type": "string"
+			},
+			"url": {
+				"type": "string"
+			},
+			"password": {
+				"type": "string"
+			},
+			"username": {
+				"type": "string"
+			},
+			"val_email_address": {
+				"type": "string"
+			},
+			"val_sessionId": {
+				"type": "string"
+			}
+		},
+		"variables": {
+			"val_responseStatus": {
+				"type": "String"
+			},
+			"val_data_responseStatus": {
+				"type": "String"
+			},
+			"val_response_desc": {
+				"type": "String"
+			}
+		},
+		"folder": {
+			"name": "MQDW"
+		},
+		"annotations": []
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

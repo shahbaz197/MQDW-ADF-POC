@@ -1,0 +1,501 @@
+{
+	"name": "PL_MCS_SUPPLER_TO_ADL_COMMON",
+	"properties": {
+		"description": "PL_MCS_SUPPLER_TO_ADL_COMMON",
+		"activities": [
+			{
+				"name": "CopyData_Supplier_adl",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "ForEach_LookupOldDeltaLoadDate",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "ForEach_LookupMAXDate",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "NetezzaSource",
+						"query": {
+							"value": "SELECT DISTINCT  *\n  FROM GMDM_ELANCO_VIEWS.GMDM_STG_TBST_L2_SAP_LFA1\nWHERE GMDM_STG_INS_TMSTMP > '@{variables('LookupOldDeltaLoadDate')}' and GMDM_STG_INS_TMSTMP <='@{variables('LookupMAXDate')}'\n",
+							"type": "Expression"
+						},
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AvroSink",
+						"storeSettings": {
+							"type": "AzureBlobFSWriteSettings"
+						},
+						"formatSettings": {
+							"type": "AvroWriteSettings",
+							"quoteAllText": true
+						}
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "GMDM_STG_FACILITY_CD",
+									"type": "String"
+								},
+								"sink": {
+									"name": "GMDM_STG_FACILITY_CD"
+								}
+							},
+							{
+								"source": {
+									"name": "GMDM_STG_SRC_INST_CD",
+									"type": "String"
+								},
+								"sink": {
+									"name": "GMDM_STG_SRC_INST_CD"
+								}
+							},
+							{
+								"source": {
+									"name": "GMDM_STG_RCRD_STS_CD",
+									"type": "String"
+								},
+								"sink": {
+									"name": "GMDM_STG_RCRD_STS_CD"
+								}
+							},
+							{
+								"source": {
+									"name": "GMDM_STG_INS_TMSTMP"
+								},
+								"sink": {
+									"name": "GMDM_STG_INS_TMSTMP"
+								}
+							},
+							{
+								"source": {
+									"name": "GMDM_STG_INS_INFORMATICA_CD",
+									"type": "Decimal"
+								},
+								"sink": {
+									"name": "GMDM_STG_INS_INFORMATICA_CD"
+								}
+							},
+							{
+								"source": {
+									"name": "GMDM_STG_HST_TMSTMP",
+									"type": "DateTime"
+								},
+								"sink": {
+									"name": "GMDM_STG_HST_TMSTMP"
+								}
+							},
+							{
+								"source": {
+									"name": "GMDM_STG_HST_INFORMATICA_CD",
+									"type": "Decimal"
+								},
+								"sink": {
+									"name": "GMDM_STG_HST_INFORMATICA_CD"
+								}
+							},
+							{
+								"source": {
+									"name": "GMDM_STG_END_TMSTMP",
+									"type": "DateTime"
+								},
+								"sink": {
+									"name": "GMDM_STG_END_TMSTMP"
+								}
+							},
+							{
+								"source": {
+									"name": "GMDM_STG_END_INFORMATICA_CD",
+									"type": "Decimal"
+								},
+								"sink": {
+									"name": "GMDM_STG_END_INFORMATICA_CD"
+								}
+							},
+							{
+								"source": {
+									"name": "SAP_ID",
+									"type": "String"
+								},
+								"sink": {
+									"name": "SAP_ID"
+								}
+							},
+							{
+								"source": {
+									"name": "SUPPLIER_TYPE",
+									"type": "String"
+								},
+								"sink": {
+									"name": "SUPPLIER_TYPE"
+								}
+							},
+							{
+								"source": {
+									"name": "SUPPLIER_NAME1",
+									"type": "String"
+								},
+								"sink": {
+									"name": "SUPPLIER_NAME1"
+								}
+							},
+							{
+								"source": {
+									"name": "SUPPLIER_NAME2",
+									"type": "String"
+								},
+								"sink": {
+									"name": "SUPPLIER_NAME2"
+								}
+							},
+							{
+								"source": {
+									"name": "ADDRESS_LINE1",
+									"type": "String"
+								},
+								"sink": {
+									"name": "ADDRESS_LINE1"
+								}
+							},
+							{
+								"source": {
+									"name": "ADDRESS_LINE2",
+									"type": "String"
+								},
+								"sink": {
+									"name": "ADDRESS_LINE2"
+								}
+							},
+							{
+								"source": {
+									"name": "CITY",
+									"type": "String"
+								},
+								"sink": {
+									"name": "CITY"
+								}
+							},
+							{
+								"source": {
+									"name": "STATE_PROVINCE",
+									"type": "String"
+								},
+								"sink": {
+									"name": "STATE_PROVINCE"
+								}
+							},
+							{
+								"source": {
+									"name": "COUNTRY",
+									"type": "String"
+								},
+								"sink": {
+									"name": "COUNTRY"
+								}
+							},
+							{
+								"source": {
+									"name": "POSTAL_AREA_CD",
+									"type": "String"
+								},
+								"sink": {
+									"name": "POSTAL_AREA_CD"
+								}
+							},
+							{
+								"source": {
+									"name": "DUNS_NUMBER",
+									"type": "String"
+								},
+								"sink": {
+									"name": "DUNS_NUMBER"
+								}
+							},
+							{
+								"source": {
+									"name": "SEARCH_TERM",
+									"type": "String"
+								},
+								"sink": {
+									"name": "SEARCH_TERM"
+								}
+							},
+							{
+								"source": {
+									"name": "SUPPLIER_STATUS",
+									"type": "String"
+								},
+								"sink": {
+									"name": "SUPPLIER_STATUS"
+								}
+							},
+							{
+								"source": {
+									"name": "RECORD_INDICATOR",
+									"type": "String"
+								},
+								"sink": {
+									"name": "RECORD_INDICATOR"
+								}
+							},
+							{
+								"source": {
+									"name": "SAD_TRANSFER_DT",
+									"type": "DateTime"
+								},
+								"sink": {
+									"name": "SAD_TRANSFER_DT"
+								}
+							}
+						]
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "DS_NTZA_TBST_L2_SAP_LFA1",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "DS_ADLS_COMMON_RAW",
+						"type": "DatasetReference",
+						"parameters": {
+							"tablename": "supplier"
+						}
+					}
+				]
+			},
+			{
+				"name": "LookupOldDeltaLoadDate",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": {
+							"value": "SELECT CONVERT(varchar, LastLoaded,20) as LastLoaded, TableName  FROM [MQDW].[DeltaLoadDate] where  tablename = 'MQDWCommon.SUPPLIER'",
+							"type": "Expression"
+						},
+						"queryTimeout": "02:00:00"
+					},
+					"dataset": {
+						"referenceName": "DS_SQL_Delta_Load_Date",
+						"type": "DatasetReference"
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "Stored ProcedureUpdateDeltaLoadDate",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "CopyData_Supplier_adl",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[MQDW].[UPDATE_DELTA_LOAD_DATE]",
+					"storedProcedureParameters": {
+						"TableName": {
+							"value": {
+								"value": "@variables('TableName')",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"MaxDate": {
+							"value": {
+								"value": "@variables('LookupMAXDate')",
+								"type": "Expression"
+							},
+							"type": "Datetime"
+						},
+						"PLName": {
+							"value": {
+								"value": "PL_MCS_SUPPLIER_TO_ADL_COMMON",
+								"type": "Expression"
+							},
+							"type": "String"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "LS_SQL_MQDW",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "LookupMAXDate",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "NetezzaSource",
+						"query": "SELECT MAX(GMDM_STG_INS_TMSTMP) as MaxDate FROM GMDM_ELANCO_VIEWS.GMDM_STG_TBST_L2_SAP_LFA1",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "DS_NTZA_MDM_Mtrl",
+						"type": "DatasetReference"
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "ForEach_LookupOldDeltaLoadDate",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "LookupOldDeltaLoadDate",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('LookupOldDeltaLoadDate').output.value",
+						"type": "Expression"
+					},
+					"isSequential": false,
+					"batchCount": 50,
+					"activities": [
+						{
+							"name": "Set LookupOldDeltaLoadDate",
+							"type": "SetVariable",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "LookupOldDeltaLoadDate",
+								"value": {
+									"value": "@item().LastLoaded",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "Set TableName",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "Set LookupOldDeltaLoadDate",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "TableName",
+								"value": {
+									"value": "@item().TableName",
+									"type": "Expression"
+								}
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "ForEach_LookupMAXDate",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "LookupMAXDate",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('LookupMAXDate').output.value",
+						"type": "Expression"
+					},
+					"isSequential": false,
+					"batchCount": 50,
+					"activities": [
+						{
+							"name": "Set LookupMAXDate",
+							"type": "SetVariable",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "LookupMAXDate",
+								"value": {
+									"value": "@{concat(substring(item().MAXDATE,0,10),' ',substring(item().MAXDATE,11,8))}",
+									"type": "Expression"
+								}
+							}
+						}
+					]
+				}
+			}
+		],
+		"variables": {
+			"LookupMAXDate": {
+				"type": "String"
+			},
+			"TableName": {
+				"type": "String"
+			},
+			"LookupOldDeltaLoadDate": {
+				"type": "String"
+			}
+		},
+		"folder": {
+			"name": "MQDW"
+		},
+		"annotations": []
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

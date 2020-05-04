@@ -1,0 +1,381 @@
+{
+	"name": "PL_BATCH_MTR_WEB",
+	"properties": {
+		"description": "PL_BATCH_MTR_WEB....",
+		"activities": [
+			{
+				"name": "Notebook_raw2stage_brand_name",
+				"description": "raw2stage_brand_name",
+				"type": "DatabricksNotebook",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebookPath": "/MQ - Veeva Quality Management (VVQM)/Batch Materials/Raw_Stage_Codes/raw2stage_brand_name"
+				},
+				"linkedServiceName": {
+					"referenceName": "LS_ADB_VVQM",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Notebook_raw2stage_mdm_batch_dim",
+				"description": "raw2stage_mdm_batch_dim",
+				"type": "DatabricksNotebook",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebookPath": "/MQ - Veeva Quality Management (VVQM)/Batch Materials/Raw_Stage_Codes/raw2stage_mdm_batch_dim"
+				},
+				"linkedServiceName": {
+					"referenceName": "LS_ADB_VVQM",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Notebook_raw2stage_mdm_mtrl",
+				"description": "raw2stage_mdm_mtrl",
+				"type": "DatabricksNotebook",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebookPath": "/MQ - Veeva Quality Management (VVQM)/Batch Materials/Raw_Stage_Codes/raw2stage_mdm_mtrl"
+				},
+				"linkedServiceName": {
+					"referenceName": "LS_ADB_VVQM",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Notebook_raw2stage_supplier",
+				"description": "raw2stage_supplier",
+				"type": "DatabricksNotebook",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebookPath": "/MQ - Veeva Quality Management (VVQM)/Batch Materials/Raw_Stage_Codes/raw2stage_supplier"
+				},
+				"linkedServiceName": {
+					"referenceName": "LS_ADB_VVQM",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Notebook_stg2curated_veeva_batch_mtrl",
+				"description": "stg2curated_veeva_batch_mtrl",
+				"type": "DatabricksNotebook",
+				"dependsOn": [
+					{
+						"activity": "Notebook_raw2stage_supplier",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "Notebook_raw2stage_mdm_mtrl",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "Notebook_raw2stage_mdm_batch_dim",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "Notebook_raw2stage_brand_name",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebookPath": "/MQ - Veeva Quality Management (VVQM)/Batch Materials/Raw_Stage_Codes/stg2curated_veeva_batch_mtrl"
+				},
+				"linkedServiceName": {
+					"referenceName": "LS_ADB_VVQM",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "If Condition_autoud_Inbnd_WebApp_Lookup",
+				"description": "IF condition is ok, this will call PL_AUTOUD_INBND_WEB_APP_LOOKUP",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "ForEach_Cleansed_Data_Metadata",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "ForEach_Cleansed_Data_source",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(variables('inc_load_time'),variables('metadata_load_time'))",
+						"type": "Expression"
+					},
+					"ifFalseActivities": [
+						{
+							"name": "Set Final_ValuesNotMatching",
+							"type": "SetVariable",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "final_set",
+								"value": "0"
+							}
+						},
+						{
+							"name": "Execute_PL_BATCH_MTR_WEB_LOOKUP",
+							"type": "ExecutePipeline",
+							"dependsOn": [
+								{
+									"activity": "Set Final_ValuesNotMatching",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "PL_BATCH_MTR_WEB_LOOKUP",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"var_email_address": {
+										"value": "@pipeline().parameters.var_email_address",
+										"type": "Expression"
+									}
+								}
+							}
+						}
+					],
+					"ifTrueActivities": [
+						{
+							"name": "Set Final_ValuesMatching",
+							"type": "SetVariable",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "final_set",
+								"value": "1"
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "Lookup_Cleansed_Data",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "Notebook_stg2curated_veeva_batch_mtrl",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "OrcSource",
+						"storeSettings": {
+							"type": "AzureBlobFSReadSettings",
+							"recursive": true,
+							"wildcardFileName": "*.orc"
+						}
+					},
+					"dataset": {
+						"referenceName": "DS_ADLS_BATCH_MTR_WATERMARK",
+						"type": "DatasetReference"
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "Lookup_Metadata",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "Notebook_stg2curated_veeva_batch_mtrl",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": {
+							"value": "SELECT CONVERT(varchar, last_loaded_txn,20) as val_last_loaded_txn\nFROM [MQDW].[Delta_API_Call]\nwhere [source_name] = 'batch_mtr' ",
+							"type": "Expression"
+						},
+						"queryTimeout": "02:00:00"
+					},
+					"dataset": {
+						"referenceName": "DS_SQL_BATCH_GETFILES",
+						"type": "DatasetReference"
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "ForEach_Cleansed_Data_source",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "Lookup_Cleansed_Data",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('Lookup_Cleansed_Data').output.value",
+						"type": "Expression"
+					},
+					"isSequential": false,
+					"batchCount": 50,
+					"activities": [
+						{
+							"name": "Set Inc Time",
+							"type": "SetVariable",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "inc_load_time",
+								"value": {
+									"value": "@{concat(substring(item().load_txn_tm,0,10),' ',substring(item().load_txn_tm,11,8))}",
+									"type": "Expression"
+								}
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "ForEach_Cleansed_Data_Metadata",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "Lookup_Metadata",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('Lookup_Metadata').output.value",
+						"type": "Expression"
+					},
+					"isSequential": false,
+					"batchCount": 50,
+					"activities": [
+						{
+							"name": "Set Metadata Time",
+							"type": "SetVariable",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "metadata_load_time",
+								"value": {
+									"value": "@item().val_last_loaded_txn",
+									"type": "Expression"
+								}
+							}
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"var_email_address": {
+				"type": "string",
+				"defaultValue": "sneh.gaur@elanco.com"
+			}
+		},
+		"variables": {
+			"metadata_load_time": {
+				"type": "String"
+			},
+			"inc_load_time": {
+				"type": "String"
+			},
+			"final_set": {
+				"type": "String"
+			},
+			"temp_last_loaded_txn": {
+				"type": "String"
+			}
+		},
+		"folder": {
+			"name": "MQDW"
+		},
+		"annotations": []
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}
