@@ -1,7 +1,7 @@
 {
 	"name": "PL_BATCH_MTR_WEB",
 	"properties": {
-		"description": "PL_BATCH_MTR_WEB....",
+		"description": "PL_BATCH_MTR_WEB......",
 		"activities": [
 			{
 				"name": "Notebook_raw2stage_brand_name",
